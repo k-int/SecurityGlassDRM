@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta name="layout" content="bootstrap"/>
-    <title>Non signed in home</title>
+    <title>signed in home</title>
   </head>
 
   <body>
