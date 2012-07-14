@@ -69,13 +69,18 @@ environments {
     }
 }
 
+// Added by the Spring Security Core plugin:
+grails.plugins.springsecurity.userLookup.userDomainClassName = 'com.k_int.sgdrm.User'
+grails.plugins.springsecurity.userLookup.authorityJoinClassName = 'com.k_int.sgdrm.UserRole'
+grails.plugins.springsecurity.authority.className = 'com.k_int.sgdrm.Role'
+
 // log4j configuration
 log4j = {
     // Example of changing the log pattern for the default console appender:
     //
-    //appenders {
-    //    console name:'stdout', layout:pattern(conversionPattern: '%c{2} %m%n')
-    //}
+    appenders {
+        console name:'stdout', layout:pattern(conversionPattern: '%c{2} %m%n')
+    }
 
     error  'org.codehaus.groovy.grails.web.servlet',        // controllers
            'org.codehaus.groovy.grails.web.pages',          // GSP
@@ -89,7 +94,8 @@ log4j = {
            'org.hibernate',
            'net.sf.ehcache.hibernate'
 
-    debug  'grails.app.controllers',
+    debug  'grails.app.config',
+           'grails.app.controllers',
            'grails.app.service',
            'grails.app.services',
            'grails.app.domain',
@@ -97,7 +103,3 @@ log4j = {
 
 }
 
-// Added by the Spring Security Core plugin:
-grails.plugins.springsecurity.userLookup.userDomainClassName = 'com.k_int.sgdrm.User'
-grails.plugins.springsecurity.userLookup.authorityJoinClassName = 'com.k_int.sgdrm.UserRole'
-grails.plugins.springsecurity.authority.className = 'com.k_int.sgdrm.Role'

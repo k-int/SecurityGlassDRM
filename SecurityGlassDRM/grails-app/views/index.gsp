@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta name="layout" content="bootstrap"/>
-    <title>Grails Twitter Bootstrap Scaffolding</title>
+    <title>Non signed in home</title>
   </head>
 
   <body>
