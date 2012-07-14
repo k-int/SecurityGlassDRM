@@ -38,11 +38,22 @@
             <span class="icon-bar"></span>
           </a>
           
-          <a class="brand" href="${createLink(uri: '/')}">Grails Twitter Bootstrap</a>
+          <a class="brand" href="${createLink(uri: '/')}">SecurityGlass DRM</a>
 
           <div class="nav-collapse">
             <ul class="nav">              
               <li<%= request.forwardURI == "${createLink(uri: '/')}" ? ' class="active"' : '' %>><a href="${createLink(uri: '/')}">Home</a></li>
+            </ul>
+
+            <ul class="nav pull-right">              
+              <sec:ifLoggedIn>
+                <li><a>Logged In</a></li>
+              </sec:ifLoggedIn>
+              <sec:ifNotLoggedIn>
+                <li><a>Signup and Pricing</a></li>
+                <li><a>Features</a></li>
+                <li><g:link controller="login">Sign-In</g:link></li>
+              </sec:ifNotLoggedIn>
             </ul>
           </div>
 
