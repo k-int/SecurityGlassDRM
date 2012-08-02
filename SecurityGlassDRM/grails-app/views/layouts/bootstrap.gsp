@@ -67,7 +67,8 @@
       <hr>
 
       <footer>
-        <p>&copy; Company 2011</p>
+        <span class="pull-right">&copy; Knowledge Integration Ltd 2012</span>
+        <span><b>SecurityGlass DRM</b> <i>Secured digital resources through steganography and embedded tracking metadata</i></span>
       </footer>
     </div>
 

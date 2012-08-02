@@ -38,6 +38,10 @@ class BootStrap {
     if (!adminUser.authorities.contains(userRole)) {
       UserRole.create adminUser, userRole
     }
+
+    def free_plan = Plan.findByName("Free") ?: new Plan(name:"Free").save();
+    def basic_plan = Plan.findByName("Basic") ?: new Plan(name:"Basic").save();
+
   }
 
   def destroy = {
