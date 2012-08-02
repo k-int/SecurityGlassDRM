@@ -21,7 +21,7 @@
 
         <div class="hero-unit">
           <h1>Welcome to Grails</h1>
-
+          home::signedin
         </div>
           
       </section>

@@ -47,10 +47,10 @@
 
             <ul class="nav pull-right">              
               <sec:ifLoggedIn>
-                <li><a>Logged In</a></li>
+                <li><g:link controller="logout">Logout</g:link></li>
               </sec:ifLoggedIn>
               <sec:ifNotLoggedIn>
-                <li><a>Signup and Pricing</a></li>
+                <li><g:link controller="register">Register</g:link></li>
                 <li><a>Features</a></li>
                 <li><g:link controller="login">Sign-In</g:link></li>
               </sec:ifNotLoggedIn>
