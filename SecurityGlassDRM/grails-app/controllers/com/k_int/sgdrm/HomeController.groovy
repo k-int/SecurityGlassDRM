@@ -34,4 +34,12 @@ class HomeController {
   @Secured(['ROLE_USER', 'IS_AUTHENTICATED_FULLY'])
   def securedIndex() {
   }
+
+  @Secured(['ROLE_USER', 'IS_AUTHENTICATED_FULLY'])
+  def createContentStore() {
+    def result = [:]
+    result
+  }
+
+
 }

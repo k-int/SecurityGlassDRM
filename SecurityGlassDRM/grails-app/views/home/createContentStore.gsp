@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta name="layout" content="bootstrap"/>
-    <title>signed in home</title>
+    <title>Create Content Store</title>
   </head>
 
   <body>
@@ -20,10 +20,9 @@
       <section id="main" class="span9">
 
         <div class="hero-unit">
-          <h1>Welcome to Grails</h1>
-          home::signedin
-          --Your Content Stores--
-          <g:link controller="home" action="createContentStore">Create new content store</g:link>
+          <h1>New content store</h1>
+          Owner -- Content Store Name -- type [free|clean]<br/>
+Good content store names are short and memorable
         </div>
           
       </section>
