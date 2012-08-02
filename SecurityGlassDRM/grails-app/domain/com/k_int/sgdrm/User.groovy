@@ -28,6 +28,9 @@ class User {
 
   def beforeInsert() {
     encodePassword()
+    if ( plan == null ) {
+      plan = Plan.findByName('Free');
+    }
   }
 
   def beforeUpdate() {
