@@ -20,6 +20,17 @@ class HomeController {
     // def mdb = mongoWrapperService.getMongo().getDB('mongo_coll_name')
 
 
+    // Some examples - Find all documents in the tipps collection, and sort them by lastmod asc using a cursor
+    // def cursor = mdb.tipps.find().sort(lastmod:1)
+    //   cursor.addOption(com.mongodb.Bytes.QUERYOPTION_NOTIMEOUT);
+    //   cursor.each { tipp ->
+    // Or the simpler version if you dont need/want the cursor
+    // mdb.tipps.find().sort(lastmod:1).each { tipp ->
+    //
+    // finding by title and type would be something like
+    // mdb.tipps.find([title:'thetitle', type:'sometype']).sort(lastmod:1).each { tipp ->
+
+
     log.debug("Principal: ${springSecurityService.principal} ${springSecurityService.principal.class.name}");
     if ( springSecurityService.principal instanceof String ) {
       // if ( springSecurityService.principal == 'anonymousUser' ) {
