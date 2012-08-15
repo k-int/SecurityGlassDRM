@@ -42,6 +42,9 @@ class BootStrap {
     def free_plan = Plan.findByName("Free") ?: new Plan(name:"Free").save();
     def basic_plan = Plan.findByName("Basic") ?: new Plan(name:"Basic").save();
 
+    def free_store_type = ContentStoreType.findByName("Free") ?: new ContentStoreType(name:"Free").save();
+    def clean_store_type = ContentStoreType.findByName("Clean") ?: new ContentStoreType(name:"Clean").save();
+
   }
 
   def destroy = {

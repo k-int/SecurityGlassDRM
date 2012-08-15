@@ -10,6 +10,39 @@ hibernate {
     cache.region.factory_class = 'net.sf.ehcache.hibernate.EhCacheRegionFactory'
 }
 // environment specific settings
+//environments {
+//    development {
+//        dataSource {
+//            dbCreate = "update" // one of 'create', 'create-drop','update'
+//            driverClassName = "com.mysql.jdbc.Driver"
+//            username = "k-int"
+//            password = "k-int"
+//            url = "jdbc:mysql://localhost/securityGlass"
+//            //&autoReconnect=true&characterEncoding=utf8"
+//        }
+//    }
+//    test {
+//        dataSource {
+//            dbCreate = "update" // one of 'create', 'create-drop','update'
+//            driverClassName = "com.mysql.jdbc.Driver"
+//            username = "k-int"
+//            password = "k-int"
+//            url = "jdbc:mysql://localhost/securityGlass"
+//            //&autoReconnect=true&characterEncoding=utf8"
+//        }
+//    }
+//    production {
+//        dataSource {
+//            dbCreate = "update" // one of 'create', 'create-drop','update'
+//            driverClassName = "com.mysql.jdbc.Driver"
+//            username = "k-int"
+//            password = "k-int"
+//            url = "jdbc:mysql://localhost/securityGlass"
+//            //&autoReconnect=true&characterEncoding=utf8"
+//        }
+//    }
+//}
+
 environments {
     development {
         dataSource {
