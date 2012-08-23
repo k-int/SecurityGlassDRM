@@ -21,15 +21,7 @@
 
         <div class="hero-unit">
           <h1>Welcome to Grails</h1>
-          home::signedin
-          --Your Content Stores--
-          <g:link controller="home" action="createContentStore">Create new content store</g:link>
           
-          <ul>
-            <g:each in="${contentStores}" var="store">
-              <li><a href="${store.name}">${store.name}</a></li>
-            </g:each>
-          </ul>
         </div>
           
       </section>

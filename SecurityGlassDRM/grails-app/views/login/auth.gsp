@@ -110,7 +110,7 @@
 			</p>
 
 			<p>
-				<input type='submit' id="submit" value='${message(code: "springSecurity.login.button")}'/>
+				<input type='submit' id="submit" value='${message(code: "springSecurity.login.button")}' class="btn btn-primary"/>
 			</p>
 		</form>
 	</div>

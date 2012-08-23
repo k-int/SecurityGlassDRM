@@ -1,10 +1,10 @@
 package com.k_int.sgdrm
 
-class ContentStore {
+class Context {
 
     String              name;
-    Context             storeContext;
-    ContentStoreType    storeType;
+    ContextType         contextType;
+    User                owner;
     
     static constraints = {
     }

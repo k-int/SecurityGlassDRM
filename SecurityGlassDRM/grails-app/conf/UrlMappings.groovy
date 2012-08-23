@@ -6,7 +6,10 @@ class UrlMappings {
                 "/login/$action"(controller:"login")
                 "/logout/$action"(controller:"logout")
                 "/register/$action"(controller:"register")
-                "/$uploadContext"(controller:"context", action:"index")
+                "/context/$action"(controller:"context")
+                "/store/$action"(controller:"store")
+                "/$context" (controller:"context", action:"index")
+                "/$context/$store"(controller:"store", action:"index")
 		"/"(controller:"home",action:"index")
                 "/home/$action"(controller:"home")
         

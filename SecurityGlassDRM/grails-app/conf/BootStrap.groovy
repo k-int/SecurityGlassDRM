@@ -44,6 +44,10 @@ class BootStrap {
 
     def free_store_type = ContentStoreType.findByName("Free") ?: new ContentStoreType(name:"Free").save();
     def clean_store_type = ContentStoreType.findByName("Clean") ?: new ContentStoreType(name:"Clean").save();
+    
+    // Create the different context types
+    def user_context_type = ContextType.findByName("User") ?: new ContextType(name:"User").save();
+    def org_context_type = ContextType.findByName("Organisation") ?: new ContextType(name:"Organisation").save();
 
   }
 

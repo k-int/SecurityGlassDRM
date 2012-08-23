@@ -9,17 +9,7 @@
 
   <body>
     <div class="row-fluid">
-      <aside id="application-status" class="span3">
-        <div class="well sidebar-nav">
-          <h5>Application Status</h5>
-          <ul>
-            <li>App version: <g:meta name="app.version"/></li>
-            <li>Grails version: <g:meta name="app.grails.version"/></li>
-          </ul>
-        </div>
-      </aside>
-
-      <section id="main" class="span9">
+      <section id="main" class="span12">
 
         <div class="hero-unit">
           <h1>New content store</h1>
@@ -36,23 +26,22 @@
             
             <dl>
               <dt><label for="owner">Owner</label></dt>
-              <dd><input id="storeOwner" name="storeOwner" type="text" value="${storeOwner}"/></dd>
+              <dd>
+                <g:select name="storeOwner" id="storeOwner" from="${possibleContexts}" value="${storeOwner}" optionKey="name" optionValue="name"/>
+              </dd>
               <dt><label for="storeName">Content store name</label></dt>
               <dd><input id="storeName" name="storeName" type="text" value="${storeName}" /></dd>
               <dt><label for="storeType">Store type</label></dt>
-              <dd><input id="storeType" name="storeType" type="text" value="${storeType}"/></dd>
-              
+              <dd>
+                <g:select name="storeType" id="storeType" from="${possibleStoreTypes}" value="${storeType}" optionKey="name" optionValue="name"/>
+              </dd>
             </dl>
             
             
             
             
-            <input type="submit" value="Create"/>
+            <input type="submit" value="Create" class="btn"/>
           </form>
-          
-          
-          Owner -- Content Store Name -- type [free|clean]<br/>
-Good content store names are short and memorable
         </div>
           
       </section>
@@ -65,29 +54,23 @@ Good content store names are short and memorable
 
        $(document).ready(function (){
          
-         alert("In the document ready method...");
-         
                 $("#storeName").change(function () {
                    $("#storeName").removeData("previousValue");
                 });
-         
-//                $("#storeName").blur(function() {
-//                      alert("In the blur method..");
-//                      var vaildRet = $("#storeName").valid();
-//                      
-//                      alert("Back from calling valid.. vaildRet = " + vaildRet);
-//                })
 
 		$("#createContentStoreForm").validate({
 			rules: {
 				'storeName': {
 					remote: {
-						url: "${createLink(controller:'home', action:'checkNewContentStoreName')}",
+						url: "${createLink(controller:'store', action:'checkNewContentStoreName')}",
 						type: "post",
 						data: {
+                                                        storeOwner: function() {
+                                                            return $("#storeOwner").val();
+                                                        },
 							storeName: function() {
 								return $("#storeName").val();
-						  }
+                                                        }
 						}
 					  }
 				}
