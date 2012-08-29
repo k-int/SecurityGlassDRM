@@ -40,6 +40,13 @@ grails.project.dependency.resolution = {
         runtime 'com.gmongo:gmongo:0.9.5'
         runtime 'org.elasticsearch:elasticsearch-lang-groovy:1.1.0'
         runtime 'org.elasticsearch:elasticsearch:0.19.8'
+        compile('org.springframework.security:spring-security-core:3.0.7.RELEASE') {
+            excludes 'com.springsource.org.aopalliance',
+                'com.springsource.org.apache.commons.logging',
+                'org.springframework.beans',
+                'org.springframework.context',
+                'org.springframework.core'
+        }
 
     }
 

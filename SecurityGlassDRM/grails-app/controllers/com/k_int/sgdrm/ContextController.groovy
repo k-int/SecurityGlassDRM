@@ -15,13 +15,39 @@ class ContextController {
         
         def specifiedContext = params.context;
         
+        def result = [:];
+        
         // Go and find the specified context in the database
         def actualContext = Context.findByName(specifiedContext);
         
         // Go and find all of the stores within this context
         def stores = ContentStore.findAllByStoreContext(actualContext);
         
-        return [specifiedContext: specifiedContext, actualContext: actualContext, contextType: actualContext.contextType, stores: stores];
+        // Go and get all contexts that this user is associated with
+        def principal;
+        if ( ( springSecurityService.principal ) && ( springSecurityService.principal.id ) ) {
+            principal = User.get(springSecurityService.principal.id)
+        }
+        if ( principal ) {
+            // We have a user - get their contexts..
+            def userContexts = Context.findAllByOwner(principal);
+            
+            log.debug("userContexts.size = " + userContexts.size);
+            result.userContexts = userContexts;
+            
+        } else {
+            // No user - can't get contexts..
+            log.debug("No user when in the context index method so can't look for contexts");
+        }
+
+        
+        result.specifiedContext = specifiedContext;
+        result.actualContext = actualContext;
+        result.contextType = actualContext.contextType;
+        result.stores = stores;
+
+        return result;
+//        return [specifiedContext: specifiedContext, actualContext: actualContext, contextType: actualContext.contextType, stores: stores];
     }
     
     @Secured(['ROLE_USER', 'IS_AUTHENTICATED_FULLY'])

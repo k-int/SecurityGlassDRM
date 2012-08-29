@@ -10,67 +10,36 @@ hibernate {
     cache.region.factory_class = 'net.sf.ehcache.hibernate.EhCacheRegionFactory'
 }
 // environment specific settings
-//environments {
-//    development {
-//        dataSource {
-//            dbCreate = "update" // one of 'create', 'create-drop','update'
-//            driverClassName = "com.mysql.jdbc.Driver"
-//            username = "k-int"
-//            password = "k-int"
-//            url = "jdbc:mysql://localhost/securityGlass"
-//            //&autoReconnect=true&characterEncoding=utf8"
-//        }
-//    }
-//    test {
-//        dataSource {
-//            dbCreate = "update" // one of 'create', 'create-drop','update'
-//            driverClassName = "com.mysql.jdbc.Driver"
-//            username = "k-int"
-//            password = "k-int"
-//            url = "jdbc:mysql://localhost/securityGlass"
-//            //&autoReconnect=true&characterEncoding=utf8"
-//        }
-//    }
-//    production {
-//        dataSource {
-//            dbCreate = "update" // one of 'create', 'create-drop','update'
-//            driverClassName = "com.mysql.jdbc.Driver"
-//            username = "k-int"
-//            password = "k-int"
-//            url = "jdbc:mysql://localhost/securityGlass"
-//            //&autoReconnect=true&characterEncoding=utf8"
-//        }
-//    }
-//}
-
 environments {
     development {
         dataSource {
-            dbCreate = "create-drop" // one of 'create', 'create-drop', 'update', 'validate', ''
-            url = "jdbc:h2:mem:devDb;MVCC=TRUE;LOCK_TIMEOUT=10000"
+            dbCreate = "update" // one of 'create', 'create-drop','update'
+            driverClassName = "com.mysql.jdbc.Driver"
+            username = "k-int"
+            password = "k-int"
+            url = "jdbc:mysql://localhost/securityGlass"
+            //&autoReconnect=true&characterEncoding=utf8"
         }
     }
     test {
         dataSource {
-            dbCreate = "update"
-            url = "jdbc:h2:mem:testDb;MVCC=TRUE;LOCK_TIMEOUT=10000"
+            dbCreate = "update" // one of 'create', 'create-drop','update'
+            driverClassName = "com.mysql.jdbc.Driver"
+            username = "k-int"
+            password = "k-int"
+            url = "jdbc:mysql://localhost/securityGlass"
+            //&autoReconnect=true&characterEncoding=utf8"
         }
     }
     production {
         dataSource {
-            dbCreate = "update"
-            url = "jdbc:h2:prodDb;MVCC=TRUE;LOCK_TIMEOUT=10000"
-            pooled = true
-            properties {
-               maxActive = -1
-               minEvictableIdleTimeMillis=1800000
-               timeBetweenEvictionRunsMillis=1800000
-               numTestsPerEvictionRun=3
-               testOnBorrow=true
-               testWhileIdle=true
-               testOnReturn=true
-               validationQuery="SELECT 1"
-            }
+            dbCreate = "update" // one of 'create', 'create-drop','update'
+            driverClassName = "com.mysql.jdbc.Driver"
+            username = "k-int"
+            password = "k-int"
+            url = "jdbc:mysql://localhost/securityGlass"
+            //&autoReconnect=true&characterEncoding=utf8"
         }
     }
 }
+
