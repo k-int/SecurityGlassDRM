@@ -10,6 +10,7 @@ class UrlMappings {
                 "/store/$action"(controller:"store")
                 "/$context" (controller:"context", action:"index")
                 "/$context/$store"(controller:"store", action:"index")
+                "/$context/$store/$action"(controller:"store")
 		"/"(controller:"home",action:"index")
                 "/home/$action"(controller:"home")
         

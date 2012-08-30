@@ -9,6 +9,8 @@ import groovy.xml.MarkupBuilder
 class StoreController {
 
     def springSecurityService;
+    
+    static allowedMethods = [uploadFile: 'POST'];
 
     
     def index() { 
@@ -100,8 +102,7 @@ class StoreController {
     return result
   }
   
-    def checkNewContentStoreName() {
-        
+  def checkNewContentStoreName() {
     
     log.debug("In the checkNewContentStoreName method with name: " + params.storeName + " and owner: " + params.storeOwner);
         def retval = true;
@@ -126,5 +127,17 @@ class StoreController {
         render retval;
     }
 
+    @Secured(['ROLE_USER', 'IS_AUTHENTICATED_FULLY'])
+    def uploadFile() {
+        log.debug("In the uploadFile method with store name: " + params.store + " and context: " + params.context);
+        
+        
+        // TODO - put some processing in place..
+
+        flash.message = "Upload received..";
+        
+        redirect(uri: "/" + params.context + "/" + params.store);
+        
+    }
 
 }

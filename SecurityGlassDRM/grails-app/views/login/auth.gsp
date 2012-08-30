@@ -17,9 +17,9 @@
             <h1><g:message code="springSecurity.login.header"/></h1>
           </div>
 
-		<g:if test='${flash.message}'>
-			<div class='login_message'>${flash.message}</div>
-		</g:if>
+          <g:if test='${flash.message}'>
+                  <div class='login_message'>${flash.message}</div>
+          </g:if>
 
 		<form action='${postUrl}' method='POST' id='loginForm' class='cssform' autocomplete='off'>
 			<p>
