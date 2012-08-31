@@ -15,15 +15,12 @@ class StoreController {
     
     def index() { 
         // TODO - what do we want here?
-        log.error("In the context controller - specified context = " + params.context + " and store: " + params.store);
+        log.error("In the store controller - specified context = " + params.context + " and store: " + params.store);
         
         def specifiedContext = params.context;
         def specifiedStore = params.store;
-        
-        // Go and find the specified context in the database
-        def actualContext = Context.findByName(specifiedContext);
-        
-        return [specifiedContext: specifiedContext, specifiedStore: specifiedStore, actualContext: actualContext, contextType: actualContext.contextType];
+                
+        return [specifiedContext: specifiedContext, specifiedStore: specifiedStore];
     }
 
     @Secured(['ROLE_USER', 'IS_AUTHENTICATED_FULLY'])
@@ -140,4 +137,80 @@ class StoreController {
         
     }
 
+    def listConnectors() {
+        
+        log.debug("In the listConnectors method with store name: " + params.store + " and context:"  + params.context);
+        
+        // Go and get the actual context and store that are specified
+        def actualContext = Context.findByName(params.context);
+        def actualStore = ContentStore.findByStoreContextAndName(actualContext, params.store);
+        
+        // Now find all of the connectors that are connected to this store
+        def allConnectors = RepositoryConnector.findAllByStore(actualStore);
+        
+        
+        // If the user is authenticated then work out whether they own this
+        // store so that we can give admin access if required
+        def isOwner = false;
+        def principal;
+        if ( ( springSecurityService.principal ) && ( springSecurityService.principal.id ) ) {
+            principal = User.get(springSecurityService.principal.id)
+        }
+        
+        if ( principal ) {
+            // We have a user - are they the owner of this store?
+            if ( principal.id == actualContext.owner.id ) {
+                log.debug("This is the owner..");
+                isOwner = true;
+            } else {
+                log.debug("This isn't the owner..");
+            }
+        } else {
+            log.debug("Not logged in so can't check if owner")
+        }
+
+        
+        def retval = ["connectors": allConnectors, "isOwner": isOwner]
+        
+        render retval as JSON;
+        // TODO
+    }
+    
+    @Secured(['ROLE_USER', 'IS_AUTHENTICATED_FULLY'])
+    def adminConnector() {
+        
+        log.debug("In the adminConnector method of the store controller with sub action: "  + params.subAction );
+        
+        if ( "add".equals(params.subAction) ) {
+            
+            def actualContext = Context.findByName(params.context);
+            def actualStore = ContentStore.findByStoreContextAndName(actualContext, params.store);
+            def existingConnector = RepositoryConnector.findByNameAndStore(params.oaiName, actualStore);
+            
+            if ( existingConnector ) {
+                // Already got a connector with the specified name - complain
+                log.debug("Attempt to create a connector for a store with a name that is already in use: " + params.oaiName);
+                
+                // TODO - how can we complain!!!!
+            } else {
+                // New connector name - so create one
+                def newConnector = new RepositoryConnector(name: params.oaiName, url: params.oaiUrl, encoding: params.oaiEncoding, setSpec: params.oaiSet, metadataPrefix: params.oaiPrefix, store: actualStore);
+                
+                if ( !newConnector.save(flush:true) ) {
+                    // Deal with the thrown error...
+                    newConnector.errors.each {
+                        log.error(it);
+                    }
+                } else {
+                    // Saved - continue..
+                    
+                    // TODO
+                }
+                
+                
+            }
+        }
+        
+        // TODO
+    }
 }
