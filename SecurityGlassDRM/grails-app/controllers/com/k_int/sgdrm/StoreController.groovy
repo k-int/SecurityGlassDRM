@@ -137,45 +137,59 @@ class StoreController {
         
     }
 
-    def listConnectors() {
+    def viewConnector() {
+        log.debug("In the viewConnector method with store name: " + params.store + " and context:"  + params.context + " and sub action: " + params.subAction);
         
-        log.debug("In the listConnectors method with store name: " + params.store + " and context:"  + params.context);
-        
-        // Go and get the actual context and store that are specified
-        def actualContext = Context.findByName(params.context);
-        def actualStore = ContentStore.findByStoreContextAndName(actualContext, params.store);
-        
-        // Now find all of the connectors that are connected to this store
-        def allConnectors = RepositoryConnector.findAllByStore(actualStore);
-        
-        
-        // If the user is authenticated then work out whether they own this
-        // store so that we can give admin access if required
-        def isOwner = false;
-        def principal;
-        if ( ( springSecurityService.principal ) && ( springSecurityService.principal.id ) ) {
-            principal = User.get(springSecurityService.principal.id)
-        }
-        
-        if ( principal ) {
-            // We have a user - are they the owner of this store?
-            if ( principal.id == actualContext.owner.id ) {
-                log.debug("This is the owner..");
-                isOwner = true;
-            } else {
-                log.debug("This isn't the owner..");
-            }
-        } else {
-            log.debug("Not logged in so can't check if owner")
-        }
+        if ( "list".equals(params.subAction) ) {
+            // Go and get the actual context and store that are specified
+            def actualContext = Context.findByName(params.context);
+            def actualStore = ContentStore.findByStoreContextAndName(actualContext, params.store);
 
-        
-        def retval = ["connectors": allConnectors, "isOwner": isOwner]
-        
-        render retval as JSON;
-        // TODO
+            // Now find all of the connectors that are connected to this store
+            def allConnectors = RepositoryConnector.findAllByStore(actualStore);
+
+
+            // If the user is authenticated then work out whether they own this
+            // store so that we can give admin access if required
+            def isOwner = false;
+            def principal;
+            if ( springSecurityService.principal instanceof String ) {
+                principal = null;
+            } else if ( ( springSecurityService.principal ) && ( springSecurityService.principal.id ) ) {
+                principal = User.get(springSecurityService.principal.id)
+            }
+
+            if ( principal ) {
+                // We have a user - are they the owner of this store?
+                if ( principal.id == actualContext.owner.id ) {
+                    log.debug("This is the owner..");
+                    isOwner = true;
+                } else {
+                    log.debug("This isn't the owner..");
+                }
+            } else {
+                log.debug("Not logged in so can't check if owner")
+            }
+
+
+            def retval = ["connectors": allConnectors, "isOwner": isOwner]
+
+            render retval as JSON;
+
+        } else if ( "show".equals(params.subAction) ) {
+            
+            if ( params.connectorId ) {
+                // Go and get the connector specified by the id
+                def connector = RepositoryConnector.findById(params.connectorId);
+                
+                render connector as JSON;
+            } else {
+                // No ID - complain..
+                // TODO
+            }
+        } 
     }
-    
+        
     @Secured(['ROLE_USER', 'IS_AUTHENTICATED_FULLY'])
     def adminConnector() {
         
@@ -203,12 +217,90 @@ class StoreController {
                     }
                 } else {
                     // Saved - continue..
+                    flash.message = "New repository connector added successfully";
                     
-                    // TODO
+                    redirect(uri: "/" + params.context + "/" + params.store);
                 }
                 
                 
             }
+        } else if ( "edit".equals(params.subAction) ) {
+            
+            // First get back the existing connector to make the changes to
+            def existingConnector = RepositoryConnector.findById(params.connectorId);
+            existingConnector.name = params.editOaiName;
+            existingConnector.url = params.editOaiUrl;
+            existingConnector.setSpec = params.editOaiSet;
+            existingConnector.metadataPrefix = params.editOaiPrefix;
+            existingConnector.encoding = params.editOaiEncoding;
+            
+            if ( !existingConnector.save(flush: true) ) {
+                // Deal with the thrown error..
+                existingConnector.errors.each {
+                    log.error(it);
+                }
+            } else {
+                // Saved - continue
+                flash.message = "Repository connector successfully updated";
+                redirect(uri: "/" + params.context + "/" + params.store);
+            }
+            // TODO
+        } else if ( "checkConnectorName".equals(params.subAction) ) {
+            // Two possible cases - adding a connector (no ID specified) and editing
+            // an existing connector (ID specified)
+            
+            log.debug("context: " + params.context + " store: " + params.store + " oai name: " + params.name + " connectorId: " + params.connectorId);
+            def retval = false;
+            def context = Context.findByName(params.context);
+            def store = ContentStore.findByStoreContextAndName(context, params.store);
+            def existingConnector = RepositoryConnector.findByNameAndStore(params.name, store);
+            
+            if ( !existingConnector ) {
+                // No existing connector - definitely OK to use this name
+                log.debug("No existing connector found - ok to use this name");
+                retval = true;
+            } else {
+                // Existing connector - if we're editing then check that this is the same connector 
+                // (and so names aren't changed)
+                if ( params.connectorId ) {
+                    Long connIdLong = new Long(params.connectorId);
+                    
+                    if ( connIdLong.equals(existingConnector.id) ) {
+                        // We have an ID and it matches the found connector - valid
+                        log.debug("connector id specified and it is the same as the found connector - ok to use this name still");
+                        retval = true;
+                    } else {
+                        log.debug("connector id specified but it's different to the connector we've found - not ok to use this name: id: *" + params.connectorId + "* existing id: *" + existingConnector.id + "*");
+                        retval = false;
+                    }
+                } else {
+                    log.debug("no connector id specified or it's not the same as the found connector - not ok to use this name");
+                    retval = false;
+                }
+            }
+            
+            render retval;
+        } else if ( "delete".equals(params.subAction) ) {
+            
+            log.debug("Delete sub action called with connector id: " + params.connectorId + " and context: " + params.context + " and store: " + params.store);
+            
+            // Load the context and store to check that the connector is connected to this store before
+            // performing the deletion as a sanity check
+            def context = Context.findByName(params.context);
+            def store = ContentStore.findByStoreContextAndName(context, params.store);
+            
+            def existingConnector = RepositoryConnector.findByIdAndStore(params.connectorId, store);
+            
+            if ( !existingConnector ) {
+                // The connector either doesn't exist, or isn't connected to this store - log it but don't do anything
+                log.info("Attempt to delete a connector with id: " + params.connectorId + " and specified context: " + params.context + " and store: " + params.store + " but the connector can't be found linked to that store - no deletion");
+            } else {
+                // We have a connector that is connected to this store, so delete it
+                log.debug("Connector found ready to be deleted");
+                existingConnector.delete();
+            }
+            
+            render true;
         }
         
         // TODO
