@@ -35,7 +35,12 @@
           
           <h2>Import</h2>
           
+          <g:if test="${uploadPermissions}">
             <a href="#uploadModal" role="button" class="btn" data-toggle="modal">Upload file</a>
+          </g:if>
+          <g:else>
+            <p class="unimportant">You do not currently have permissions to upload resources to this store</p>
+          </g:else>
             
           <h2>Connectors</h2>
           <div id="connectorsDiv"></div>
@@ -246,10 +251,13 @@
             // There are some connectors..
             $.each(json.connectors, function() {
               var dt = $("<dt></dt>");
-              dt.append(this.name);
+              var nameString = this.name + " (" + this.connectorStatus.name + ")";
+              
+              dt.append(nameString);
               if ( isOwner ) {
-                dt.append("<a href='#' onclick='editConnector("+this.id+");'><i class='icon-edit pull-right'></i></a>");
-                dt.append("<a href='#' onclick='deleteConnector("+this.id+",\""+this.name+"\");'><i class='icon-trash pull-right'></i></a>");
+                dt.append("<a href='#' onclick='editConnector("+this.id+");' title='Edit'><i class='icon-edit pull-right'></i></a>");
+                dt.append("<a href='#' onclick='deleteConnector("+this.id+",\""+this.name+"\");' title='Delete'><i class='icon-trash pull-right'></i></a>");
+                dt.append("<a href='#' onclick='harvestConnector("+this.id+",\""+this.name+"\");' title='Queue harvest'><i class='icon-off pull-right'></i></a>")
               }
               connectorList.append(dt);
               connectorList.append("<dd>" + this.url + "</dd>");
@@ -258,8 +266,8 @@
               connectorList.append("<hr class='minimalMargin'/>");
             });
           } else {
-            // No connectors yet - just add a message
-            var dt = $("<dt class='noContentMessage'></dt>");
+            // No connectors yet - just add a message saying so 
+            var dt = $("<dt class='unimportant'></dt>");
             dt.append("<i>No connectors currently added to this store</i>");
             
             connectorList.append(dt);
@@ -347,7 +355,34 @@
             // Deletion cancelled - don't do anything
           }
         }
-        
+
+
+        function harvestConnector(connId,connName) {
+            
+            var continueHarvest = confirm("Are you sure you want to start harvesting using the connector with name: " + connName + "? This cannot be undone.");
+            
+            if ( continueHarvest ) {
+              // User wants to perform the harvest..
+              
+              $.getJSON("${specifiedStore}/connectors/admin/startHarvest/" + connId, function() {})
+              .success(function(json) { 
+                // Reload the connector information on the page
+                alert("Finished!! (In success)");
+
+              })
+              .error(function(jqXHR, textStatus, errorThrown) {
+                alert("Error harvesting the specified repository connectors");
+                console.log("error " + textStatus);
+                console.log("incoming Text " + jqXHR.responseText);
+              })
+              .complete(function() {
+            	    alert("Finished (in the complete)")
+              });
+            } else {
+              // Harvest cancelled - don't do anything
+            }
+          }
+          
       </script>
     </div>
   </body>

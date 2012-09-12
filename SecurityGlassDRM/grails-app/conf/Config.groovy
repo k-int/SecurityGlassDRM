@@ -77,6 +77,9 @@ environments {
     }
 }
 
+// JSON rendering config
+grails.converters.json.default.deep=true
+
 
 // log4j configuration
 log4j = {
@@ -103,7 +106,7 @@ log4j = {
            'grails.app.service',
            'grails.app.services',
            'grails.app.domain',
-           'grails.app.jobs' 
+           'grails.app.jobs'
 
 }
 

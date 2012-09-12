@@ -12,7 +12,7 @@
   <div class="row-fluid">
     <section id="main" class="span12">
       <div id='login'>
-	<div class='hero-unit'>
+    	<div class='hero-unit'>
           <div class="page-header">
             <h1><g:message code="springSecurity.login.header"/></h1>
           </div>
@@ -20,6 +20,10 @@
           <g:if test='${flash.message}'>
                   <div class='login_message'>${flash.message}</div>
           </g:if>
+        </div>
+
+        <div class="row">
+            <div class="span12">
 
 		<form action='${postUrl}' method='POST' id='loginForm' class='cssform' autocomplete='off'>
                   <table>
@@ -54,6 +58,7 @@
                     </tr>
                   </table>
 		</form>
+        </div>
 	</div>
       </div>
     </section>

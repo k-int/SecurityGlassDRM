@@ -1,8 +1,9 @@
 import com.k_int.sgdrm.*;
 
-import com.k_int.kbplus.auth.*
 import org.codehaus.groovy.grails.plugins.springsecurity.SecurityFilterPosition
 import org.codehaus.groovy.grails.plugins.springsecurity.SpringSecurityUtils
+
+import grails.converters.JSON
 
 class BootStrap {
 
@@ -48,6 +49,40 @@ class BootStrap {
     // Create the different context types
     def user_context_type = ContextType.findByName("User") ?: new ContextType(name:"User").save();
     def org_context_type = ContextType.findByName("Organisation") ?: new ContextType(name:"Organisation").save();
+
+	// Create the different connector statuses
+	def idle_status = ConnectorStatus.findByName("Idle") ?: new ConnectorStatus(name: "Idle").save();
+	def queued_status = ConnectorStatus.findByName("Queued") ?: new ConnectorStatus(name: "Queued").save();
+	def running_status = ConnectorStatus.findByName("Running") ?: new ConnectorStatus(name: "Running").save();
+	def disabled_status = ConnectorStatus.findByName("Disabled") ?: new ConnectorStatus(name: "Disabled").save();
+	
+	
+	// Register JSON marshaller for the RepositoryConnector
+	JSON.registerObjectMarshaller(RepositoryConnector) {
+		def returnArray = [:]
+		returnArray['id'] = it.id
+		
+		def connStatusArray = [:]
+		connStatusArray['id'] = it.connectorStatus.id
+		connStatusArray['name'] = it.connectorStatus.name
+		returnArray['connectorStatus'] = connStatusArray
+		
+		returnArray['encoding'] = it.encoding
+		returnArray['metadataPrefix'] = it.metadataPrefix
+		returnArray['name'] = it.name
+		returnArray['setSpec'] = it.setSpec
+		returnArray['statusChangeTime'] = it.statusChangeTime
+		
+		def storeArray = [:]
+		storeArray['id'] = it.store.id;
+		storeArray['class'] = it.store.class
+		
+		returnArray['store'] = storeArray
+		
+		returnArray['url'] = it.url
+
+		return returnArray
+	}
 
   }
 

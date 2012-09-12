@@ -20,34 +20,42 @@ class ContextController {
         // Go and find the specified context in the database
         def actualContext = Context.findByName(specifiedContext);
         
-        // Go and find all of the stores within this context
-        def stores = ContentStore.findAllByStoreContext(actualContext);
-        
-        // Go and get all contexts that this user is associated with
-        def principal;
-        if ( ( springSecurityService.principal ) && ( springSecurityService.principal.id ) ) {
-            principal = User.get(springSecurityService.principal.id)
-        }
-        if ( principal ) {
-            // We have a user - get their contexts..
-            def userContexts = Context.findAllByOwner(principal);
-            
-            log.debug("userContexts.size = " + userContexts.size);
-            result.userContexts = userContexts;
-            
-        } else {
-            // No user - can't get contexts..
-            log.debug("No user when in the context index method so can't look for contexts");
-        }
-
-        
-        result.specifiedContext = specifiedContext;
-        result.actualContext = actualContext;
-        result.contextType = actualContext.contextType;
-        result.stores = stores;
-
-        return result;
-//        return [specifiedContext: specifiedContext, actualContext: actualContext, contextType: actualContext.contextType, stores: stores];
+		if ( actualContext != null ) {
+	        // Go and find all of the stores within this context
+	        def stores = ContentStore.findAllByStoreContext(actualContext);
+	        
+	        // Go and get all contexts that this user is associated with
+	        def principal;
+	        if ( ( springSecurityService.principal ) ) {
+				if ( springSecurityService.principal instanceof String ) 
+	                principal = null;
+				else if ( springSecurityService.principal.id ) 
+	            	principal = User.get(springSecurityService.principal.id)
+	        }
+	        if ( principal ) {
+	            // We have a user - get their contexts..
+	            def userContexts = Context.findAllByOwner(principal);
+	            
+	            log.debug("userContexts.size = " + userContexts.size);
+	            result.userContexts = userContexts;
+	            
+	        } else {
+	            // No user - can't get contexts..
+	            log.debug("No user when in the context index method so can't look for contexts");
+	        }
+	
+	        
+	        result.specifiedContext = specifiedContext;
+	        result.actualContext = actualContext;
+	        result.contextType = actualContext.contextType;
+	        result.stores = stores;
+	
+	        return result;
+		} else {
+			// No context found - complain
+			flash.message = "The specified context could not be found within the system";
+			response.sendError(404);
+		}
     }
     
     @Secured(['ROLE_USER', 'IS_AUTHENTICATED_FULLY'])

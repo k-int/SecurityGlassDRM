@@ -22,7 +22,11 @@
         <div class="hero-unit">
           <div class="page-header">
             <h1>Create an account</h1>
+          </div>
+        </div>
 
+          <div class="row">
+            <div class="span12">
 <g:form action='register' name='registerForm'>
 
 	<g:if test='${emailSent}'>
@@ -37,16 +41,16 @@
 	<tbody>
 
 		<s2ui:textFieldRow name='username' labelCode='user.username.label' bean="${command}"
-                         size='40' labelCodeDefault='Username' value="${command.username}"/>
+                         size='40' labelCodeDefault='Username' value="${command.username}" autocomplete="off"/>
 
 		<s2ui:textFieldRow name='email' bean="${command}" value="${command.email}"
-		                   size='40' labelCode='user.email.label' labelCodeDefault='E-mail'/>
+		                   size='40' labelCode='user.email.label' labelCodeDefault='E-mail' autocomplete="off"/>
 
 		<s2ui:passwordFieldRow name='password' labelCode='user.password.label' bean="${command}"
-                             size='40' labelCodeDefault='Password' value="${command.password}"/>
+                             size='40' labelCodeDefault='Password' value="${command.password}" autocomplete="off"/>
 
 		<s2ui:passwordFieldRow name='password2' labelCode='user.password2.label' bean="${command}"
-                             size='40' labelCodeDefault='Password (again)' value="${command.password2}"/>
+                             size='40' labelCodeDefault='Password (again)' value="${command.password2}" autocomplete="off"/>
 
 	</tbody>
 	</table>
@@ -57,10 +61,10 @@
 
 </g:form>
 
+            </div>
           </div>
           
           
-        </div>
       </section>
 
     </div>

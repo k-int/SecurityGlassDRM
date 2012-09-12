@@ -163,7 +163,13 @@ hr.minimalMargin {
     margin: 2px 0;
 }
 
-.noContentMessage {
+
+p.unimportant {
     color: #aaaaaa;
     font-weight: normal;
+    font-size: 1em;
+}
+
+.hero-unit {
+        padding: 20px;
 }

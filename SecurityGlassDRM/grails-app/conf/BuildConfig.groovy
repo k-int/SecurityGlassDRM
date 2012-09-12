@@ -40,6 +40,9 @@ grails.project.dependency.resolution = {
         runtime 'com.gmongo:gmongo:0.9.5'
         runtime 'org.elasticsearch:elasticsearch-lang-groovy:1.1.0'
         runtime 'org.elasticsearch:elasticsearch:0.19.8'
+		compile 'org.apache.httpcomponents:httpmime:4.1.2'
+		compile 'org.apache.httpcomponents:httpclient:4.0'
+		compile 'org.codehaus.groovy.modules.http-builder:http-builder:0.5.0'
         compile('org.springframework.security:spring-security-core:3.0.7.RELEASE') {
             excludes 'com.springsource.org.aopalliance',
                 'com.springsource.org.apache.commons.logging',
@@ -52,7 +55,7 @@ grails.project.dependency.resolution = {
 
     plugins {
         runtime ":hibernate:$grailsVersion"
-        runtime ":jquery:1.7.2"
+        runtime ":jquery:1.8.0"
         runtime ":jquery-ui:1.8.15"
         runtime ":resources:1.2-RC1"
 

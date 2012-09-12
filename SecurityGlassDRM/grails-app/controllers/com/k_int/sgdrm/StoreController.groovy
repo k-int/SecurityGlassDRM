@@ -1,7 +1,7 @@
 package com.k_int.sgdrm
 
 import org.springframework.dao.DataIntegrityViolationException
-import grails.converters.*
+import grails.converters.JSON
 import grails.plugins.springsecurity.Secured
 import grails.converters.*
 import groovy.xml.MarkupBuilder
@@ -12,15 +12,51 @@ class StoreController {
     
     static allowedMethods = [uploadFile: 'POST'];
 
+	def connectorSystem = new ConnectorSubsystemService();
     
     def index() { 
-        // TODO - what do we want here?
         log.error("In the store controller - specified context = " + params.context + " and store: " + params.store);
         
         def specifiedContext = params.context;
         def specifiedStore = params.store;
-                
-        return [specifiedContext: specifiedContext, specifiedStore: specifiedStore];
+		
+		def return404 = false;
+		
+		// Get the specified store to check that it exists..
+		def actualContext = Context.findByName(specifiedContext);
+		if ( actualContext == null ) {
+			return404 = true;	
+		} else {
+			def actualStore = ContentStore.findByNameAndStoreContext(specifiedStore, actualContext);
+		
+			if ( actualStore == null ) {
+				return404 = true;
+			} else {
+			
+				// We have a store as requested - continue with processing..
+			
+				// Work out whether the user is logged in and whether they have permissions to upload to this store
+				def principal = null;
+				if ( ( springSecurityService.principal ) && !(springSecurityService.principal instanceof String) && ( springSecurityService.principal.id ) ) {
+					principal = User.get(springSecurityService.principal.id)
+				}
+
+				def uploadPermissions = false;
+				
+				if ( principal != null ) {
+					if ( principal.id == actualStore.storeContext.owner.id ) 
+						uploadPermissions = true;		
+				}
+		                
+		        return [specifiedContext: specifiedContext, specifiedStore: specifiedStore, uploadPermissions: uploadPermissions];
+			}
+		}
+		
+		if ( return404 ) {
+			// The specified context / store not found - return a 404 error
+			response.sendError(404)
+			
+		}
     }
 
     @Secured(['ROLE_USER', 'IS_AUTHENTICATED_FULLY'])
@@ -32,70 +68,79 @@ class StoreController {
     def result = [:]
     
     def principal;
-    if ( ( springSecurityService.principal ) && ( springSecurityService.principal.id ) ) {
+    if ( ( springSecurityService.principal ) && !(springSecurityService.principal instanceof String) && ( springSecurityService.principal.id ) ) {
         principal = User.get(springSecurityService.principal.id)
     }
     
-    if ( request.post ) {
-        // A POST submission
-        log.debug("In the createContentStore method with a POST. Params: name:" + params.storeName + " type:" + params.storeType + " owner: " + params.storeOwner)
-        
-        // Convert the given store name into something that is valid
-        def newStoreName = ContentStoreUtils.createValidStoreName(params.storeName);
-        log.debug("newStoreName worked out to be: " + newStoreName)
-        
-        // Set up the new content store with the specified values
-        def existingContentStore = ContentStore.findByName(newStoreName);
-        if ( existingContentStore ) {
-            // Already a store with the chosen name - complain
-            log.debug("Attempt to create a content store with a name that is already in use..");
-            
-            flash.error = "Specified content store name already in use please try another";
-            result.storeName = params.storeName;
-            result.storeType = params.storeType;
-            result.storeOwner = params.storeOwner;
-        } else {
-            
-            def storeContext = Context.findByName(params.storeOwner);
-            def storeType = ContentStoreType.findByName(params.storeType);
-
-            log.debug("storeContext = " + storeContext + " and type: " + storeType + " and name: " + newStoreName);
-                
-            def newContentStore = new ContentStore(name: newStoreName, storeContext: storeContext, storeType: storeType);
-//            newContentStore.storeContext = storeContext;
-            if ( !newContentStore.save() ) {
-                newContentStore.errors.each {
-                    println it;
-                }
-            }
-            
-                log.debug("newContentStore = " + newContentStore);
-            
-            // Content store created - send the user to the created store
-            flash.message = newStoreName + " content store successfully created";
-            redirect(uri:"/" + params.storeOwner + "/" + newContentStore.name);
-        }
-        
-    } else {
-        // A GET request
-        log.debug("In the createContentStore method with a GET.");
-        
-        if ( params.storeOwner) {
-            result.storeOwner = params.storeOwner;
-        }
-            
-
-        
-        // Get the list of possible owners (contexts)
-        def possibleContexts = Context.findAllByOwner(principal);
-        def possibleStoreTypes = ContentStoreType.list();
-            
-        
-        result.possibleContexts = possibleContexts;
-        result.possibleStoreTypes = possibleStoreTypes;
-        
-    }
-    
+	// Check that the user has permissions to create a store here and fail if not..
+	def actualContext = Context.findByName(params.storeOwner);
+	if ( actualContext == null || actualContext.owner.id != principal.id ) {
+		// No context, or no permissions to create a store here...
+		flash.message = "You can't create a store here";
+		response.sendError(403, "You can't create a store here");
+	} else {
+		
+	    if ( request.post ) {
+	        // A POST submission
+	        log.debug("In the createContentStore method with a POST. Params: name:" + params.storeName + " type:" + params.storeType + " owner: " + params.storeOwner)
+	        
+	        // Convert the given store name into something that is valid
+	        def newStoreName = ContentStoreUtils.createValidStoreName(params.storeName);
+	        log.debug("newStoreName worked out to be: " + newStoreName)
+	        
+	        // Set up the new content store with the specified values
+	        def existingContentStore = ContentStore.findByName(newStoreName);
+	        if ( existingContentStore ) {
+	            // Already a store with the chosen name - complain
+	            log.debug("Attempt to create a content store with a name that is already in use..");
+	            
+	            flash.error = "Specified content store name already in use please try another";
+	            result.storeName = params.storeName;
+	            result.storeType = params.storeType;
+	            result.storeOwner = params.storeOwner;
+	        } else {
+	            
+	            def storeContext = Context.findByName(params.storeOwner);
+	            def storeType = ContentStoreType.findByName(params.storeType);
+	
+	            log.debug("storeContext = " + storeContext + " and type: " + storeType + " and name: " + newStoreName);
+	                
+	            def newContentStore = new ContentStore(name: newStoreName, storeContext: storeContext, storeType: storeType);
+	//            newContentStore.storeContext = storeContext;
+	            if ( !newContentStore.save() ) {
+	                newContentStore.errors.each {
+	                    println it;
+	                }
+	            }
+	            
+	                log.debug("newContentStore = " + newContentStore);
+	            
+	            // Content store created - send the user to the created store
+	            flash.message = newStoreName + " content store successfully created";
+	            redirect(uri:"/" + params.storeOwner + "/" + newContentStore.name);
+	        }
+	        
+	    } else {
+	        // A GET request
+	        log.debug("In the createContentStore method with a GET.");
+	        
+	        if ( params.storeOwner) {
+	            result.storeOwner = params.storeOwner;
+	        }
+	            
+	
+	        
+	        // Get the list of possible owners (contexts)
+	        def possibleContexts = Context.findAllByOwner(principal);
+	        def possibleStoreTypes = ContentStoreType.list();
+	            
+	        
+	        result.possibleContexts = possibleContexts;
+	        result.possibleStoreTypes = possibleStoreTypes;
+	        
+	    }
+	}
+	    
     return result
   }
   
@@ -208,7 +253,8 @@ class StoreController {
                 // TODO - how can we complain!!!!
             } else {
                 // New connector name - so create one
-                def newConnector = new RepositoryConnector(name: params.oaiName, url: params.oaiUrl, encoding: params.oaiEncoding, setSpec: params.oaiSet, metadataPrefix: params.oaiPrefix, store: actualStore);
+				def idleStatus = ConnectorStatus.findByName("Idle");
+                def newConnector = new RepositoryConnector(name: params.oaiName, url: params.oaiUrl, encoding: params.oaiEncoding, setSpec: params.oaiSet, metadataPrefix: params.oaiPrefix, store: actualStore, connectorStatus: idleStatus, statusChangeTime: new Date());
                 
                 if ( !newConnector.save(flush:true) ) {
                     // Deal with the thrown error...
@@ -301,6 +347,51 @@ class StoreController {
             }
             
             render true;
+        } else if ( "startHarvest".equals(params.subAction) ) {
+			log.debug("Start Harvest action called with connector id: " + params.connectorId);
+			
+			// Go and get the connector so that we can set it going
+			def connectorDetails = RepositoryConnector.findById(params.connectorId);
+			
+			if ( connectorDetails ) {
+				// We have found the connector - set it as queued and then we'll pick it up and start
+				// elsewhere
+				def queuedStatus = ConnectorStatus.findByName("Queued");
+				connectorDetails.connectorStatus = queuedStatus;
+				connectorDetails.statusChangeTime = new Date();
+				
+				connectorDetails.save(flush:true);
+								
+				// TODO - want to move the following code out into a timer task at some point...
+
+//				// Clear existing harvests.. // TODO - is that what this does??
+//				connectorSystem.removeAll();
+//				
+//				// Register the connector with the subsystem (and so set it going)
+//				connectorSystem.registerConnector([type:'oai', 
+//													shortcode: connectorDetails.name,
+//													baseuri: connectorDetails.url,
+//													setname: connectorDetails.setSpec,
+//													prefix: connectorDetails.metadataPrefix,
+//													connector: 'com.k_int.sgdrm.OAIConnector',
+//													maxbatch: 100]);
+//												
+//				log.debug("Connector subsystem connectors: " + connectorSystem.listConnectors());
+//				
+//				def startTime = System.currentTimeMillis();
+//				
+//				connectorSystem.syncRepository(connectorDetails.name);
+//				
+//				log.debug("Finished syncing.. after: ${System.currentTimeMillis() - startTime}ms");
+//	
+//								// TODO
+			} else {
+				// No connector found - can't set it going..
+				
+				// TODO - how should we fail here?
+			}
+		
+			render true;
         }
         
         // TODO

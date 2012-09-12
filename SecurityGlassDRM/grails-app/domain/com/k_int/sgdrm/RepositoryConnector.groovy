@@ -2,7 +2,7 @@ package com.k_int.sgdrm
 
 /**
  * Domain object for the repository connector 
- * @author rpb
+ * @author rpb rich@k-int.com
  */
 class RepositoryConnector {
 	
@@ -12,9 +12,15 @@ class RepositoryConnector {
     String          setSpec;
     String          metadataPrefix;
     ContentStore    store;
+	ConnectorStatus connectorStatus;
+	Date			statusChangeTime;
     
     
     static constraints = {
+		statusChangeTime (nullable: true)
     }
+	
+	// Note - Custom JSON marshaller specified in the bootstrap.groovy class..
+	
 }
 
