@@ -3,7 +3,7 @@ package com.k_int.sgdrm
 import org.springframework.dao.DataIntegrityViolationException
 import grails.converters.*
 import grails.plugins.springsecurity.Secured
-import grails.converters.*
+import grails.converters.JSON
 import groovy.xml.MarkupBuilder
 
 class ContextController {
@@ -23,27 +23,6 @@ class ContextController {
 		if ( actualContext != null ) {
 	        // Go and find all of the stores within this context
 	        def stores = ContentStore.findAllByStoreContext(actualContext);
-	        
-	        // Go and get all contexts that this user is associated with
-	        def principal;
-	        if ( ( springSecurityService.principal ) ) {
-				if ( springSecurityService.principal instanceof String ) 
-	                principal = null;
-				else if ( springSecurityService.principal.id ) 
-	            	principal = User.get(springSecurityService.principal.id)
-	        }
-	        if ( principal ) {
-	            // We have a user - get their contexts..
-	            def userContexts = Context.findAllByOwner(principal);
-	            
-	            log.debug("userContexts.size = " + userContexts.size);
-	            result.userContexts = userContexts;
-	            
-	        } else {
-	            // No user - can't get contexts..
-	            log.debug("No user when in the context index method so can't look for contexts");
-	        }
-	
 	        
 	        result.specifiedContext = specifiedContext;
 	        result.actualContext = actualContext;
@@ -131,5 +110,33 @@ class ContextController {
         
         render retval;
     }
+	
+	def listContextsForUser() {
+		log.debug("In the listContextsForUser method..");
+		
+		// Go and get all contexts that this user is associated with
+		def result = [:];
+		
+		def principal;
+		if ( ( springSecurityService.principal ) ) {
+			if ( springSecurityService.principal instanceof String )
+				principal = null;
+			else if ( springSecurityService.principal.id )
+				principal = User.get(springSecurityService.principal.id)
+		}
+		if ( principal ) {
+			// We have a user - get their contexts..
+			def userContexts = Context.findAllByOwner(principal);
+			
+			log.debug("userContexts.size = " + userContexts.size);
+			result.userContexts = userContexts;
+			
+		} else {
+			// No user - can't get contexts..
+			log.debug("No user when in the context index method so can't look for contexts");
+		}
+
+		render result as JSON;
+	}
     
 }

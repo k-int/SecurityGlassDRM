@@ -9,10 +9,16 @@
 
   <body>
     <div class="row-fluid">
-      <section id="main" class="span12">
+      <section id="main">
 
-        <div class="hero-unit">
-          <h1>New content store</h1>
+        <div class="hero-unit row">
+        
+            <div class="span8">
+                <h1>New content store</h1>
+            </div>
+            <div class="span4">
+                <g:render template="/contextChooser"/>
+            </div>
           
           <g:if test='${flash.error}'>
             <div class="errors">
@@ -21,6 +27,9 @@
               </ul>
             </div>
           </g:if>
+        </div>
+        
+        <div class="span12">
           
           <form action="createContentStore" id="createContentStoreForm" name="createContentStoreForm" method="POST">
             
@@ -37,10 +46,11 @@
               </dd>
             </dl>
             
-            
-            
-            
-            <input type="submit" value="Create" class="btn"/>
+            <div class="btn-group">
+                <input type="submit" value="Create" class="btn btn-primary"/>
+                <a href="${createLink(uri: '/') + storeOwner}" class="btn btn-danger">Cancel</a>
+                TODO - cancel button
+            </div>
           </form>
         </div>
           

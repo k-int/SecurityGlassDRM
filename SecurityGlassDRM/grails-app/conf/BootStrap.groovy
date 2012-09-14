@@ -84,6 +84,29 @@ class BootStrap {
 		return returnArray
 	}
 
+	// And for the Context itself
+	JSON.registerObjectMarshaller(Context) {
+		def returnArray = [:]
+		
+		returnArray['class'] = it.class;
+		returnArray['id'] = it.id
+		
+		def contextTypeArray = [:]
+		contextTypeArray['class'] = it.contextType.class
+		contextTypeArray['id'] = it.contextType.id
+		contextTypeArray['name'] = it.contextType.name
+		returnArray['contextType'] = contextTypeArray;
+		
+		returnArray['name'] = it.name
+		
+		def ownerArray = [:]
+		ownerArray['class'] = it.owner.class
+		ownerArray['id'] = it.owner.id
+		ownerArray['username'] = it.owner.username
+		returnArray['owner'] = ownerArray
+		
+		return returnArray;
+	}
   }
 
   def destroy = {

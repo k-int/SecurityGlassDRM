@@ -12,8 +12,13 @@
     <div class="row-fluid">
       <section id="main" class="span12">
 
-        <div class="hero-unit">
-          <h1>${specifiedContext}/${specifiedStore}</h1>
+        <div class="hero-unit row">
+            <div class="span8">
+              <h1>${specifiedContext}/${specifiedStore}</h1>
+            </div>
+            <div class="span4">
+                <g:render template="/contextChooser"/>
+            </div>
 
           <g:if test="${flash.message}">
             <div class="message">${flash.message}</div>

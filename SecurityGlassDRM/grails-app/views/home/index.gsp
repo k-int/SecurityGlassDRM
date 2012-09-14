@@ -8,10 +8,10 @@
   <body>
     <div class="row-fluid">
 
-      <section id="main" class="span12">
+      <section id="main">
 
-        <div class="hero-unit">
-          <div class="page-header">
+        <div class="hero-unit row">
+          <div class="page-header span12">
             <h1>Welcome to SecurityGlass DRM</h1>
           </div>
           

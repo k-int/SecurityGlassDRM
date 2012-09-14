@@ -16,15 +16,21 @@
         </div>
       </aside>-->
 
-      <section id="main" class="span9">
+      <section id="main">
 
-        <div class="span12">
-          
-          <div class="page-header">
-            <h1>New organisation</h1>
-          </div>
+        <div class="hero-unit row">
+            <div class="span8">
+	          <div class="page-header">
+	            <h1>New organisation</h1>
+	          </div>
+            </div>
+            <div class="span4">
+               <g:render template="/contextChooser"/>
+            </div>
+        </div>
 
-          <div class="hero-unit">
+
+          <div class="row span12">
           <g:if test='${flash.error}'>
             <div class="errors">
               <ul>
@@ -40,12 +46,13 @@
               <dd><input id="contextName" name="contextName" type="text" value="${contextName}" /></dd>
             </dl>
             
-            <input type="submit" value="Create" class="btn btn-primary"/>
-            <g:link class="btn" controller="home">Cancel</g:link>
+            <div class="btn-group">
+                <input type="submit" value="Create" class="btn btn-primary"/>
+                <g:link class="btn btn-danger" controller="home">Cancel</g:link>
+            </div>
           </form>
 
           </div>
-        </div>
           
       </section>
 
