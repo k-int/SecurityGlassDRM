@@ -52,6 +52,7 @@ class BootStrap {
 
 	// Create the different connector statuses
 	def idle_status = ConnectorStatus.findByName("Idle") ?: new ConnectorStatus(name: "Idle").save();
+	def requested_status = ConnectorStatus.findByName("Harvest requested") ?: new ConnectorStatus(name: "Harvest requested").save();
 	def queued_status = ConnectorStatus.findByName("Queued") ?: new ConnectorStatus(name: "Queued").save();
 	def running_status = ConnectorStatus.findByName("Running") ?: new ConnectorStatus(name: "Running").save();
 	def disabled_status = ConnectorStatus.findByName("Disabled") ?: new ConnectorStatus(name: "Disabled").save();

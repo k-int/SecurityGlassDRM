@@ -372,7 +372,7 @@
               $.getJSON("${specifiedStore}/connectors/admin/startHarvest/" + connId, function() {})
               .success(function(json) { 
                 // Reload the connector information on the page
-                alert("Finished!! (In success)");
+                setupConnectors();
 
               })
               .error(function(jqXHR, textStatus, errorThrown) {
@@ -381,7 +381,6 @@
                 console.log("incoming Text " + jqXHR.responseText);
               })
               .complete(function() {
-            	    alert("Finished (in the complete)")
               });
             } else {
               // Harvest cancelled - don't do anything

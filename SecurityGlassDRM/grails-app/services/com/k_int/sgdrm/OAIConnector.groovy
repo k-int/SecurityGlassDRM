@@ -52,9 +52,7 @@ class OAIConnector {
     props.reccount = 0;
     props.maxts = "";
 
-    // def oai_endpoint = new HTTPBuilder( 'http://culturegrid.org.uk/dpp/oai' )
-    def oai_endpoint = new RESTClient( 'http://www.culturegrid.org.uk/dpp/oai' )
-    // oai_endpoint.auth.basic model.dppUser, model.dppPass
+    def oai_endpoint = new RESTClient( oai_connector.baseuri )
 
     def rt = fetchOAIPage(oai_endpoint, aggregator_service, null, props, oai_connector_info.prefix, oai_connector_info.setname)
 

@@ -11,8 +11,6 @@ class StoreController {
     def springSecurityService;
     
     static allowedMethods = [uploadFile: 'POST'];
-
-	def connectorSystem = new ConnectorSubsystemService();
     
     def index() { 
         log.error("In the store controller - specified context = " + params.context + " and store: " + params.store);
@@ -354,37 +352,14 @@ class StoreController {
 			def connectorDetails = RepositoryConnector.findById(params.connectorId);
 			
 			if ( connectorDetails ) {
-				// We have found the connector - set it as queued and then we'll pick it up and start
+				// We have found the connector - set it as requested and then we'll pick it up and start
 				// elsewhere
-				def queuedStatus = ConnectorStatus.findByName("Queued");
-				connectorDetails.connectorStatus = queuedStatus;
+				def requestedStatus = ConnectorStatus.findByName("Harvest requested");
+				connectorDetails.connectorStatus = requestedStatus;
 				connectorDetails.statusChangeTime = new Date();
 				
 				connectorDetails.save(flush:true);
 								
-				// TODO - want to move the following code out into a timer task at some point...
-
-//				// Clear existing harvests.. // TODO - is that what this does??
-//				connectorSystem.removeAll();
-//				
-//				// Register the connector with the subsystem (and so set it going)
-//				connectorSystem.registerConnector([type:'oai', 
-//													shortcode: connectorDetails.name,
-//													baseuri: connectorDetails.url,
-//													setname: connectorDetails.setSpec,
-//													prefix: connectorDetails.metadataPrefix,
-//													connector: 'com.k_int.sgdrm.OAIConnector',
-//													maxbatch: 100]);
-//												
-//				log.debug("Connector subsystem connectors: " + connectorSystem.listConnectors());
-//				
-//				def startTime = System.currentTimeMillis();
-//				
-//				connectorSystem.syncRepository(connectorDetails.name);
-//				
-//				log.debug("Finished syncing.. after: ${System.currentTimeMillis() - startTime}ms");
-//	
-//								// TODO
 			} else {
 				// No connector found - can't set it going..
 				
