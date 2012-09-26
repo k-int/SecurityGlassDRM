@@ -17,15 +17,31 @@ class OAISchedulingJob {
 		
 		// Go and get any repository connectors that are in state 'Harvest requestsed'
 		def requestedStatus = ConnectorStatus.findByName("Harvest requested");
-		def toQueue = RepositoryConnector.findByConnectorStatus(requestedStatus, [sort: "statusChangeTime",order:"asc"]);
+		def toQueue = RepositoryConnector.findAllByConnectorStatus(requestedStatus, [sort: "statusChangeTime",order:"asc"]);
 		
 		
 		
 		if ( toQueue ) {
 
+			// Loop through each job that's waiting and set it to queued
+			def queuedStatus = ConnectorStatus.findByName("Queued");
+			toQueue.each() {
+				log.debug("Setting status to queued for connector with id: " + it.id);
+				it.connectorStatus = queuedStatus;
+				it.save(flush: true);
+			}
+			
+			
 			// Loop through each job that's waiting to be harvested and add it to the OAI subsystem.
 			log.debug("Before adding 'harvest requested' connectors.. Connector subsystem connectors: " + connectorSystem.listConnectors());
+			
+			def runningStatus = ConnectorStatus.findByName("Running");
+			
 			toQueue.each() {
+				
+				// Store that we're starting to run it
+				it.connectorStatus = runningStatus;
+				it.save(flush:true)
 			
 				// Register the connector with the subsystem (and so set it going)
 				connectorSystem.registerConnector([type:'oai',

@@ -32,7 +32,7 @@ class OAIConnector {
     // def mongo = new com.gmongo.GMongo();
     // def db = mongo.getDB("media_rcs")
 
-    def repo_baseurl = 'http://localhost:8080/repository/upload.json'
+    def repo_baseurl = 'http://localhost:28080/repository/upload.json'
     def repo_identity = 'admin'
     def repo_credentials = 'password'
     log.debug("Assemble repository client to ${repo_baseurl} - ${repo_identity}/${repo_credentials}");
@@ -52,7 +52,7 @@ class OAIConnector {
     props.reccount = 0;
     props.maxts = "";
 
-    def oai_endpoint = new RESTClient( oai_connector.baseuri )
+    def oai_endpoint = new RESTClient( oai_connector_info.baseuri )
 
     def rt = fetchOAIPage(oai_endpoint, aggregator_service, null, props, oai_connector_info.prefix, oai_connector_info.setname)
 
