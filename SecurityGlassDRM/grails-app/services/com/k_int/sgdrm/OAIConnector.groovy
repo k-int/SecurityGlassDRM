@@ -32,7 +32,7 @@ class OAIConnector {
     // def mongo = new com.gmongo.GMongo();
     // def db = mongo.getDB("media_rcs")
 
-    def repo_baseurl = 'http://localhost:8080/repository/upload.json'
+    def repo_baseurl = 'http://localhost:28080/repository/upload.json'
     def repo_identity = 'admin'
     def repo_credentials = 'password'
     log.debug("Assemble repository client to ${repo_baseurl} - ${repo_identity}/${repo_credentials}");
@@ -52,32 +52,42 @@ class OAIConnector {
     props.reccount = 0;
     props.maxts = "";
 
-    def oai_endpoint = new RESTClient( oai_connector.baseuri )
+    def oai_endpoint = new RESTClient( oai_connector_info.baseuri )
 
-    def rt = fetchOAIPage(oai_endpoint, aggregator_service, null, props, oai_connector_info.prefix, oai_connector_info.setname)
+    def rt = fetchOAIPage(oai_endpoint, aggregator_service, null, props, oai_connector_info.prefix, oai_connector_info.setname, oai_connector_info.owner)
 
-    def cont = true
+    def cont = checkAgainstMaxBatchSize(props.reccount, oai_connector_info.maxbatch);
 
     while ( ( rt != null ) && 
             ( rt.length() > 0 ) && 
             ( cont ) ) {
       try {
         Thread.sleep(5000);
-      }
-      catch ( Exception e ) {
+      } catch ( Exception e ) {
       }
 
       log.debug("Iterating using resumption token");
-      rt = fetchOAIPage(oai_endpoint, aggregator_service, rt, props, oai_connector_info.prefix, oai_connector_info.setname);
+      rt = fetchOAIPage(oai_endpoint, aggregator_service, rt, props, oai_connector_info.prefix, oai_connector_info.setname, oai_connector_info.owner);
 
-      if ( ( oai_connector_info.maxbatch != null ) && 
-           ( oai_connector_info.maxbatch > 0 ) ) {
-        println("Checking counter (${props.reccount} < ${oai_connector_info.maxbatch}");
-        if ( props.reccount > oai_connector_info.maxbatch ) {
-          cont = false;
-        }
-      }
-    }
+	  cont = checkAgainstMaxBatchSize(props.reccount, oai_connector_info.maxbatch);
+
+	}
+	
+	// Remember the number of records processed for storing later		
+	oai_connector_info.records_processed = props.reccount;
+  }
+  
+  def checkAgainstMaxBatchSize(reccount, maxbatch) {
+	  def retval = true;
+	  
+	  if (maxbatch != null && maxbatch > 0 ) {
+		  println("Checking record counter (${reccount} < ${maxbatch}");
+		  if ( reccount > maxbatch ) {
+			  retval = false;
+		  }
+	  }
+	  
+	  return retval;
   }
 
   def fetchOAIPage(oai_endpoint, 
@@ -85,7 +95,8 @@ class OAIConnector {
                    resumption_token, 
                    props,
                    prefix,
-                   setname) {
+                   setname,
+				   data_provider) {
     println("fetchOAIPage ${resumption_token}, ${prefix}, ${setname}");
 
     def result = null;
@@ -125,8 +136,8 @@ class OAIConnector {
           props.maxts = rec.header.datestamp;
           byte[] db = new_record.getBytes('UTF-8')
 
-          println("About to make post request [${props.reccount} / ${props.maxts}]");
-          uploadStream(db,aggregator_service, 'nmcg')
+          println("About to make post request [${props.reccount} / ${props.maxts} / ${data_provider}]");
+          uploadStream(db, aggregator_service, data_provider)
 
           try {
             Thread.sleep(500);
@@ -172,6 +183,7 @@ class OAIConnector {
         response.success = { resp, data ->
           println("response status: ${resp.statusLine}")
           println("Response data code: ${data?.code}");
+		  println("Response message: ${data?.message}");
         }
 
         response.failure = { resp ->

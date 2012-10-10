@@ -10,7 +10,7 @@ class ConnectorSubsystemService {
     println("Named parameter version..");
   }
 
-  def registerOAIConnector(shortcode, baseuri, prefix='oai_dc', setname=null, un=null, pw=null) {
+  def registerOAIConnector(shortcode, baseuri, prefix='oai_dc', setname=null, un=null, pw=null, owner=null) {
     println("registerRemoteOAIRepository ${baseuri}");
     registerConnector([shortcode:shortcode, 
                        baseuri:baseuri,
@@ -18,7 +18,8 @@ class ConnectorSubsystemService {
                        prefix:prefix, 
                        un:un, 
                        pw:pw,
-                       connector:'com.k_int.sgdrm.OAIConnector']);
+                       connector:'com.k_int.sgdrm.OAIConnector',
+					   owner:owner]);
   }
 
   def registerConnector(Map params) {
@@ -60,7 +61,8 @@ class ConnectorSubsystemService {
       connector.sync(existing_entry);
       // Update any returned params
       println("Updating entry: ${existing_entry}");
-      db.connectors.update(params);
+	  existing_entry.lastRunFinished = new Date();
+      db.connectors.save(existing_entry);
     }
     else {
       throw new Exception("Unknown Connector Shortcode ${shortcode}");

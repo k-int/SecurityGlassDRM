@@ -163,6 +163,10 @@ hr.minimalMargin {
     margin: 2px 0;
 }
 
+hr.reducedMargin {
+    margin: 5px 0;
+}
+
 
 p.unimportant {
     color: #aaaaaa;
@@ -172,4 +176,9 @@ p.unimportant {
 
 .hero-unit {
         padding: 20px;
+}
+
+section.resourceSection {
+	border-bottom: thin dotted #666666;
+	margin-bottom: 8px;
 }

@@ -32,7 +32,9 @@
         <div class="span8">
           <h2>Resources</h2>
           
-          <p>TODO</p>
+          <div id="resourcesDiv" class="row-fluid">
+            <p class="unimportant">Loading..</p>
+          </div>
           
         </div>
           
@@ -222,6 +224,7 @@
           });
 
           setupConnectors();
+          setupResources();
           
         });
 
@@ -386,6 +389,79 @@
               // Harvest cancelled - don't do anything
             }
           }
+
+        function setupResources() {
+
+            $.getJSON("${grailsApplication.config.com.k_int.sgdrm.esSearchPath}?sort=indexTime:desc&size=5&q=owner:${specifiedContext}/${specifiedStore}", function() {
+
+            })
+            .success(function(json) { 
+              processESResources(json, 5);
+            })
+            .error(function(jqXHR, textStatus, errorThrown) {
+              alert("Error getting back resources from elastic search");
+              console.log("error " + textStatus);
+              console.log("incoming Text " + jqXHR.responseText);
+            })
+            .complete(function() {});
+        }
+
+
+        function processESResources(json, maxSize) {
+        
+            var resourcesContainer = $('#resourcesDiv');
+            resourcesContainer.html('');
+            
+            // Add in the information about the different returned resources
+          
+          if ( json.hits != null && json.hits.total > 0 ) {
+            // There are some resources..
+
+            var searchData = $("<p></p>");
+            var displayNum = Math.min(maxSize, json.hits.total);
+            
+            searchData.append("This store\'s " + displayNum + " most recent records from a total of " + json.hits.total);
+            resourcesContainer.append(searchData);
+            
+            $.each(json.hits.hits, function() {
+
+            	// Set up the row with image and data sections
+            	var sectionDiv = $("<section class='resourceSection'></section>");
+            	var rowDiv = $("<div class='row'></div>");
+            	var imageDiv = $("<div class='thumbnail span2'></div>");
+            	var dataDiv = $("<div class='resourceData span10'></div>");
+
+                sectionDiv.append(rowDiv);
+            	rowDiv.append(imageDiv);
+            	rowDiv.append(dataDiv);
+
+            	// Add the image to the relevant section
+            	imageDiv.append("<img class='resourceThumbnail' src='" + this._source.identifier + "' alt='Resource thumbnail'/>");
+
+            	// Add the resource data
+            	var dl = $("<dl></dl>");
+            	dl.append("<dt>" + this._source.title + " <i>(" + this._source.indexTime + ")</i></dt>");
+            	dl.append("<dd>" + this._source.description + "</dd>");
+            	
+            	dataDiv.append(dl);
+
+                
+                resourcesContainer.append(rowDiv);
+                resourcesContainer.append("<hr class='reducedMargin'/>");
+            	
+                
+            });
+          } else {
+          
+          alert("No resources match..");
+            // No resources yet - just add a message saying so 
+            var message = $("<p class='unimportant'></p>");
+            message.append("<i>No resources currently added to this store</i>");
+    // TODO - refactor to fit with divs..        
+            resourceList.append(message);
+              resourcesContainer.append(resourceList);
+          }
+        }
           
       </script>
     </div>
