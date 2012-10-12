@@ -16,8 +16,6 @@ import java.nio.charset.Charset
 import groovyx.net.http.RESTClient
 import groovy.util.slurpersupport.GPathResult
 import groovy.xml.StreamingMarkupBuilder
-import org.apache.http.entity.mime.*
-import org.apache.http.entity.mime.content.*
 import java.nio.charset.Charset
 
 

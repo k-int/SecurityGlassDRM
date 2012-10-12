@@ -3,7 +3,6 @@ package com.k_int.sgdrm
 import org.springframework.dao.DataIntegrityViolationException
 import grails.converters.*
 import grails.plugins.springsecurity.Secured
-import grails.converters.*
 import groovy.xml.MarkupBuilder
 
 // How to access mongo

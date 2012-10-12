@@ -39,6 +39,11 @@
         </div>
           
         <div class="span4">
+        
+          <h2>Statistics</h2>
+          <div id="statisticsDiv">
+            <p class="unimportant">Loading..</p>
+          </div>
           
           <h2>Import</h2>
           
@@ -225,7 +230,7 @@
 
           setupConnectors();
           setupResources();
-          
+          setupStatistics();
         });
 
 
@@ -453,16 +458,51 @@
             });
           } else {
           
-          alert("No resources match..");
             // No resources yet - just add a message saying so 
             var message = $("<p class='unimportant'></p>");
             message.append("<i>No resources currently added to this store</i>");
-    // TODO - refactor to fit with divs..        
-            resourceList.append(message);
-              resourcesContainer.append(resourceList);
+            resourcesContainer.append(message);
           }
         }
           
+        function setupStatistics() {
+alert("In setupStatistics");
+            $.getJSON("${specifiedStore}/statistics", function() {
+
+            })
+            .success(function(json) { 
+              processStatistics(json);
+            })
+            .error(function(jqXHR, textStatus, errorThrown) {
+              alert("Error getting back statistics");
+              console.log("error " + textStatus);
+              console.log("incoming Text " + jqXHR.responseText);
+            })
+            .complete(function() {});
+        }
+
+        function processStatistics(json) {
+            alert("In processStatistics()");
+            var statisticsContainer = $('#statisticsDiv');
+            
+            // If there are no records in the database then we don't have any records so just tell the user
+            if ( json.databaseTotal == 0 ) {
+            alert("no records");
+                // No records
+                var message = $("<i class='unimportant'>Data will appear here once records have been imported</i>");
+                statisticsContainer.html('');
+                statisticsContainer.append(message);
+            } else {
+            alert("records");
+                // Records in the system - output as appropriate
+                var messageHolder = $("<p></p>");
+                messageHolder.append("<i class='icon-folder-close' title='Database total'></i> ").append(json.databaseTotal);
+                messageHolder.append(" <i class='icon-search' title='Elastic search total'></i> ").append(json.esTotal);
+                
+                statisticsContainer.html('');
+                statisticsContainer.append(messageHolder);
+            }
+        }
       </script>
     </div>
   </body>

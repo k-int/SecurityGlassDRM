@@ -9,6 +9,8 @@ import groovy.xml.MarkupBuilder
 class StoreController {
 
     def springSecurityService;
+	def mongoWrapperService;
+	def elasticSearchWrapperService;
     
     static allowedMethods = [uploadFile: 'POST'];
     
@@ -45,7 +47,7 @@ class StoreController {
 					if ( principal.id == actualStore.storeContext.owner.id ) 
 						uploadPermissions = true;		
 				}
-		                
+				
 		        return [specifiedContext: specifiedContext, specifiedStore: specifiedStore, uploadPermissions: uploadPermissions];
 			}
 		}
@@ -371,4 +373,44 @@ class StoreController {
         
         // TODO
     }
+	
+	/*
+	 * Work out and return statistics about the store's contents including number of
+	 * records in the database, elastic search, etc.
+	 */
+	def statistics() {
+		def specifiedContext = params.context;
+		def specifiedStore = params.store;
+		
+		// Work out the owner string to search for within the database, etc.
+		def ownerString = specifiedContext + "/" + specifiedStore;
+		
+		// Get the Mongo connection and search it
+		def databaseTotal = 0;
+		def db = mongoWrapperService.mongo.getDB("frbr");
+		databaseTotal = db.work.find(["owner" : ownerString]).count()
+
+		
+		// Get an Elasticsearch connection and search it
+		def esTotal = 0;
+		def esnode = elasticSearchWrapperService.getNode();
+		def esclient = esnode.getClient();
+		
+		def searchOutput = esclient.search {
+			types "work"
+			source {
+				query {
+					term(owner: ownerString)
+				}
+			}
+		}
+		
+		esTotal = searchOutput.response.hits.totalHits;
+		
+		
+		def retval = ["databaseTotal":databaseTotal, "esTotal":esTotal]
+		
+		render retval as JSON;
+		
+	}
 }
