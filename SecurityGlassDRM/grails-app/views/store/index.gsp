@@ -466,7 +466,6 @@
         }
           
         function setupStatistics() {
-alert("In setupStatistics");
             $.getJSON("${specifiedStore}/statistics", function() {
 
             })
@@ -482,18 +481,15 @@ alert("In setupStatistics");
         }
 
         function processStatistics(json) {
-            alert("In processStatistics()");
             var statisticsContainer = $('#statisticsDiv');
             
             // If there are no records in the database then we don't have any records so just tell the user
             if ( json.databaseTotal == 0 ) {
-            alert("no records");
                 // No records
                 var message = $("<i class='unimportant'>Data will appear here once records have been imported</i>");
                 statisticsContainer.html('');
                 statisticsContainer.append(message);
             } else {
-            alert("records");
                 // Records in the system - output as appropriate
                 var messageHolder = $("<p></p>");
                 messageHolder.append("<i class='icon-folder-close' title='Database total'></i> ").append(json.databaseTotal);
