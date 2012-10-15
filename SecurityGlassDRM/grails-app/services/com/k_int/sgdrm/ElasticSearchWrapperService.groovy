@@ -3,91 +3,73 @@ package com.k_int.sgdrm
 import org.elasticsearch.groovy.node.GNode
 import org.elasticsearch.groovy.node.GNodeBuilder
 import static org.elasticsearch.groovy.node.GNodeBuilder.*
+import org.elasticsearch.groovy.client.GClient
+import org.elasticsearch.groovy.client.GIndicesAdminClient
 
 
 class ElasticSearchWrapperService {
 
-  def gNode = null;
+	def gNode = null;
 
-  public ElasticSearchWrapperService() {
-    println("Construct ElasticSearchWrapperService");
-  }
+	public ElasticSearchWrapperService() {
+		log.debug("Construct ElasticSearchWrapperService");
+	}
 
-  @javax.annotation.PostConstruct
-  def init() {
-    println("init - post construct");
-    // log.debug("Init");
+	@javax.annotation.PostConstruct
+	def init() {
+		
+		// TODO - change the following to get values from configuration..
+		def clus_nm = "aggr"
 
-    // System.setProperty("java.net.preferIPv4Stack","true");
-    // log.debug("Attempting to create a transport client...");
-    // Map<String,String> m = new HashMap<String,String>();
-    // m.put("cluster.name","aggr");
-    // Settings s = ImmutableSettings.settingsBuilder() .put(m).build();
-    // TransportClient client = new TransportClient(s);
+		log.info("Using ${clus_nm} as cluster name...");
 
-    // If there is a aggr.dev.es.cluster=iidevaggr setm us it, otherwise cluster name is aggr
+		// Make sure that ES actually works..
+		org.elasticsearch.groovy.common.xcontent.GXContentBuilder.rootResolveStrategy = Closure.DELEGATE_FIRST;
 
-    def clus_nm = "aggr"
+		log.debug("Construct node settings");
+		def nodeBuilder = new org.elasticsearch.groovy.node.GNodeBuilder()
 
-    // log.info("Using ${clus_nm} as cluster name...");
-    println("Connect to cluster ${clus_nm}");
+		nodeBuilder.settings {
+			node {
+				client = true
+			}
+			cluster {
+				name = clus_nm
+			}
+			http {
+				enabled = false
+			}
+			discovery {
+				zen {
+					minimum_master_nodes=1
+					ping {
+						unicast {
+							hosts = [ "localhost" ]
+						}
+					}
+				}
+			}
+		}
 
-    //org.elasticsearch.groovy.common.xcontent.GXContentBuilder.rootResolveStrategy = Closure.DELEGATE_FIRST;
-    def nodeBuilder = new org.elasticsearch.groovy.node.GNodeBuilder()
+		gNode = nodeBuilder.node()
 
-    // log.debug("Construct node settings");
+		log.debug("Init completed");
+	}
 
+	@javax.annotation.PreDestroy
+	def destroy() {
+		log.debug("Destroy");
+		gNode.close()
+		log.debug("Destroy completed");
+	}
 
-    nodeBuilder.settings {
-     node {
-       client = true
-     }
-     cluster {
-       name = clus_nm
-     }
-     http {
-       enabled = false
-     }
-     discovery {
-       zen {
-         minimum_master_nodes=1
-         ping {
-           unicast {
-             hosts = [ "localhost" ]
-           }
-         }
-       }
-     }
-   }
-    //nodeBuilder.settings {
-      //node {
-        //client = true
-      //}
-      //cluster {
-        //name = clus_nm
-      //}
-      //http {
-        //enabled = false
-      //}
-    //}
+	def getNode() {
+		log.debug("getNode()");
+		gNode
+	}
 
-    // log.debug("Constructing node...");
-    gNode = nodeBuilder.node()
-
-    println("Completed ElasticSearchWrapperService::init");
-    // log.debug("Init completed");
-  }
-
-  @javax.annotation.PreDestroy
-  def destroy() {
-    // log.debug("Destroy");
-    gNode.close()
-    // log.debug("Destroy completed");
-  }
-
-  def getNode() {
-    // log.debug("getNode()");
-    gNode
-  }
-
+	def getESClient() {
+		gNode.getClient()
+	}
+	
 }

@@ -25,4 +25,8 @@ class MongoWrapperService {
   def getMongo() {
     mongo
   }
+  
+  def getDatabase(db) {
+	  mongo.getDB(db);
+  }
 }

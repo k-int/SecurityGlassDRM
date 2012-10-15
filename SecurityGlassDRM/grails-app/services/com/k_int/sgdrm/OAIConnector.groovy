@@ -21,182 +21,332 @@ import java.nio.charset.Charset
 
 class OAIConnector {
 
-  private static final log = LogFactory.getLog(this)
+	private static final log = LogFactory.getLog(this)
 
-  def sync(oai_connector_info) {
-    println("OAIConnector::sync(${oai_connector_info})");
+	def sync(oai_connector_info) {
+		println("OAIConnector::sync(${oai_connector_info})");
 
-    // Get a handle to the local mongo service
-    // def mongo = new com.gmongo.GMongo();
-    // def db = mongo.getDB("media_rcs")
+		// Get a handle to the local mongo service
+		// def mongo = new com.gmongo.GMongo();
+		// def db = mongo.getDB("media_rcs")
 
-    def repo_baseurl = 'http://localhost:28080/repository/upload.json'
-    def repo_identity = 'admin'
-    def repo_credentials = 'password'
-    log.debug("Assemble repository client to ${repo_baseurl} - ${repo_identity}/${repo_credentials}");
+		def repo_baseurl = 'http://localhost:28080/repository/upload.json'
+		def repo_identity = 'admin'
+		def repo_credentials = 'password'
+		log.debug("Assemble repository client to ${repo_baseurl} - ${repo_identity}/${repo_credentials}");
 
-    def aggregator_service = new HTTPBuilder( repo_baseurl )
-    aggregator_service.auth.basic repo_identity, repo_credentials
+		def aggregator_service = new HTTPBuilder( repo_baseurl )
+		aggregator_service.auth.basic repo_identity, repo_credentials
 
 
-    // def oai_connector_info = db.agents.findOne(identifier: 'mcmg_gatherer_agent_info')
+		// def oai_connector_info = db.agents.findOne(identifier: 'mcmg_gatherer_agent_info')
 
-    if ( oai_connector_info == null ) {
-      println("No connector info... abort");
-      return;
-    }
+		if ( oai_connector_info == null ) {
+			println("No connector info... abort");
+			return;
+		}
 
-    def props =[:]
-    props.reccount = 0;
-    props.maxts = "";
+		def props =[:]
+		props.reccount = 0;
+		props.maxts = "";
 
-    def oai_endpoint = new RESTClient( oai_connector_info.baseuri )
+		def oai_endpoint = new RESTClient( oai_connector_info.baseuri )
 
-    def rt = fetchOAIPage(oai_endpoint, aggregator_service, null, props, oai_connector_info.prefix, oai_connector_info.setname, oai_connector_info.owner)
+		def rt = fetchOAIPage(oai_endpoint, aggregator_service, null, props, oai_connector_info.prefix, oai_connector_info.setname, oai_connector_info.owner)
 
-    def cont = checkAgainstMaxBatchSize(props.reccount, oai_connector_info.maxbatch);
+		def cont = checkAgainstMaxBatchSize(props.reccount, oai_connector_info.maxbatch);
 
-    while ( ( rt != null ) && 
-            ( rt.length() > 0 ) && 
-            ( cont ) ) {
-      try {
-        Thread.sleep(5000);
-      } catch ( Exception e ) {
-      }
+		while ( ( rt != null ) &&
+		( rt.length() > 0 ) &&
+		( cont ) ) {
+			try {
+				Thread.sleep(5000);
+			} catch ( Exception e ) {
+			}
 
-      log.debug("Iterating using resumption token");
-      rt = fetchOAIPage(oai_endpoint, aggregator_service, rt, props, oai_connector_info.prefix, oai_connector_info.setname, oai_connector_info.owner);
+			log.debug("Iterating using resumption token");
+			rt = fetchOAIPage(oai_endpoint, aggregator_service, rt, props, oai_connector_info.prefix, oai_connector_info.setname, oai_connector_info.owner);
 
-	  cont = checkAgainstMaxBatchSize(props.reccount, oai_connector_info.maxbatch);
+			cont = checkAgainstMaxBatchSize(props.reccount, oai_connector_info.maxbatch);
 
+		}
+
+		// Remember the number of records processed for storing later
+		oai_connector_info.records_processed = props.reccount;
 	}
-	
-	// Remember the number of records processed for storing later		
-	oai_connector_info.records_processed = props.reccount;
-  }
-  
-  def checkAgainstMaxBatchSize(reccount, maxbatch) {
-	  def retval = true;
-	  
-	  if (maxbatch != null && maxbatch > 0 ) {
-		  println("Checking record counter (${reccount} < ${maxbatch}");
-		  if ( reccount > maxbatch ) {
-			  retval = false;
-		  }
-	  }
-	  
-	  return retval;
-  }
 
-  def fetchOAIPage(oai_endpoint, 
-                   aggregator_service,
-                   resumption_token, 
-                   props,
-                   prefix,
-                   setname,
-				   data_provider) {
-    println("fetchOAIPage ${resumption_token}, ${prefix}, ${setname}");
+	def checkAgainstMaxBatchSize(reccount, maxbatch) {
+		def retval = true;
 
-    def result = null;
+		if (maxbatch != null && maxbatch > 0 ) {
+			println("Checking record counter (${reccount} < ${maxbatch}");
+			if ( reccount > maxbatch ) {
+				retval = false;
+			}
+		}
 
-    oai_endpoint.request(GET) {request ->
+		return retval;
+	}
 
-      // uri.path = '/ajax/services/search/web'
-      if ( resumption_token != null ) {
-      log.debug("Processing with resumption token...");
-        uri.query = [ 'verb':'ListRecords', 
-                      'resumptionToken':resumption_token, 
-                      ]  // from, until,...
-      }
-      else {
-        log.debug("Initial harvest - no resumption token");
-        uri.query = [ 'verb':'ListRecords', 
-                      'metadataPrefix':prefix,
-                      'set': setname ]  // from, until,...
-      }
+	def fetchOAIPage(oai_endpoint,
+	aggregator_service,
+	resumption_token,
+	props,
+	prefix,
+	setname,
+	data_provider) {
+		println("fetchOAIPage ${resumption_token}, ${prefix}, ${setname}");
 
-      request.getParams().setParameter("http.socket.timeout", new Integer(5000))
-      headers.Accept = 'application/xml'
-      // headers.'User-Agent' = 'GroovyHTTPBuilderTest/1.0'
-      // headers.'Referer' = 'http://blog.techstacks.com/'
-      response.success = { resp, xml ->
-        // log.debug( "Server Response: ${resp.statusLine}" )
-        // log.debug( "Server Type: ${resp.getFirstHeader('Server')}" )
-        // log.debug( "content type: ${resp.headers.'Content-Type'}" )
+		def result = null;
 
-        xml?.ListRecords?.record.each { rec ->
-          // log.debug("Record under xml ${rec.toString()}");
-          def builder = new StreamingMarkupBuilder()
-          // log.debug("record: ${builder.bindNode(rec.metadata.description).toString()}")
-          def new_record = builder.bindNode(rec.metadata.children()[0]).toString()
-          log.debug("submit record[${props.reccount++}]")
+		oai_endpoint.request(GET) {request ->
 
-          props.maxts = rec.header.datestamp;
-          byte[] db = new_record.getBytes('UTF-8')
+			// uri.path = '/ajax/services/search/web'
+			if ( resumption_token != null ) {
+				log.debug("Processing with resumption token...");
+				uri.query = [ 'verb':'ListRecords',
+							'resumptionToken':resumption_token,
+						]  // from, until,...
+			}
+			else {
+				log.debug("Initial harvest - no resumption token");
+				uri.query = [ 'verb':'ListRecords',
+							'metadataPrefix':prefix,
+							'set': setname ]  // from, until,...
+			}
 
-          println("About to make post request [${props.reccount} / ${props.maxts} / ${data_provider}]");
-          uploadStream(db, aggregator_service, data_provider)
+			request.getParams().setParameter("http.socket.timeout", new Integer(5000))
+			headers.Accept = 'application/xml'
+			// headers.'User-Agent' = 'GroovyHTTPBuilderTest/1.0'
+			// headers.'Referer' = 'http://blog.techstacks.com/'
+			response.success = { resp, xml ->
+				// log.debug( "Server Response: ${resp.statusLine}" )
+				// log.debug( "Server Type: ${resp.getFirstHeader('Server')}" )
+				// log.debug( "content type: ${resp.headers.'Content-Type'}" )
 
-          try {
-            Thread.sleep(500);
-          }
-          catch ( Exception e ) {
-          }
-        }
+				xml?.ListRecords?.record.each { rec ->
+					// log.debug("Record under xml ${rec.toString()}");
+					def builder = new StreamingMarkupBuilder()
+					// log.debug("record: ${builder.bindNode(rec.metadata.description).toString()}")
+					def new_record = builder.bindNode(rec.metadata.children()[0]).toString()
+					log.debug("submit record[${props.reccount++}]")
 
-        result = xml?.ListRecords?.resumptionToken?.toString()
-      }
+					props.maxts = rec.header.datestamp;
+					byte[] db = new_record.getBytes('UTF-8')
 
-      response.failure = { resp ->
-        log.debug( resp.statusLine )
-      }
-    }
+					println("About to make post request [${props.reccount} / ${props.maxts} / ${data_provider}]");
+					uploadStream(db, aggregator_service, data_provider)
 
-    log.debug("fetch page returning ${result}.");
+					try {
+						Thread.sleep(500);
+					}
+					catch ( Exception e ) {
+					}
+				}
 
-    result
-  }
+				result = xml?.ListRecords?.resumptionToken?.toString()
+			}
 
-  def uploadStream(document_bytes,target_service, data_provider) {
+			response.failure = { resp ->
+				log.debug( resp.statusLine )
+			}
+		}
 
-    log.debug("About to make post request");
+		log.debug("fetch page returning ${result}.");
 
-    try {
-      byte[] resource_to_deposit = document_bytes
+		result
+	}
 
-      log.debug("Length of input stream is ${resource_to_deposit.length}");
+	def identify(oai_endpoint) throws OAIException {
 
-      target_service.request(POST) {request ->
-        requestContentType = 'multipart/form-data'
+		log.debug("OAIConnector::identify called with oai_endpoint: ${oai_endpoint}");
 
-        // Much help taken from http://evgenyg.wordpress.com/2010/05/01/uploading-files-multipart-post-apache/
-        def multipart_entity = new MultipartEntity(HttpMultipartMode.BROWSER_COMPATIBLE);
-        multipart_entity.addPart( "owner", new StringBody( data_provider, "text/plain", Charset.forName( "UTF-8" )))  // Owner
+		def result = [:] // Set up the map for return data
 
-        def uploaded_file_body_part = new org.apache.http.entity.mime.content.ByteArrayBody(resource_to_deposit, 'text/xml', 'filename')
-        multipart_entity.addPart( "upload", uploaded_file_body_part)
+		// Perform the identify request
+		oai_endpoint.request(GET) {request ->
 
-        request.entity = multipart_entity;
+			uri.query = [ 'verb':'Identify']
 
-        response.success = { resp, data ->
-          println("response status: ${resp.statusLine}")
-          println("Response data code: ${data?.code}");
-		  println("Response message: ${data?.message}");
-        }
+			request.getParams().setParameter("http.socket.timeout", new Integer(5000))
+			headers.Accept = 'application/xml'
 
-        response.failure = { resp ->
-          println("Failure attempting to deposit record - ${resp.statusLine} - data: ${resp.data}");
-        }
-      }
-    }
-    catch ( Exception e ) {
-      log.error("Unexpected exception trying to read remote stream",e)
-    }
-    finally {
-      log.debug("uploadStream try block completed");
-    }
-    log.debug("uploadStream completed");
-  }
+			response.success = { resp, xml ->
+				// log.debug( "Server Response: ${resp.statusLine}" )
+				// log.debug( "Server Type: ${resp.getFirstHeader('Server')}" )
+				// log.debug( "content type: ${resp.headers.'Content-Type'}" )
+
+				xml?.Identify?.each { ident ->
+					log.debug("Identify response:  ${ident.toString()}");
+
+					result.repositoryName = ident.repositoryName?.toString();
+					result.baseUrl = ident.baseURL?.toString();
+					result.protocolVersion = ident.protocolVersion?.toString();
+					result.adminEmail = ident.adminEmail?.toString();
+					result.earliestDatestamp = ident.earliestDatestamp?.toString();
+					result.deletedRecord = ident.deletedRecord?.toString();
+					result.granularity = ident.granularity?.toString();
+
+					def identifiers = [:];
+					identifiers.scheme = ident.description?.oai-identifier?.scheme?.toString()
+					identifiers.repositoryIdentifier = ident.description?.oai-identifier?.repositoryIdentifier?.toString()
+					identifiers.delimiter = ident.description?.oai-identifier?.delimiter?.toString();
+					identifiers.sample = ident.description?.oai-identifier?.sampleIdentifier?.toString();
+
+					result.identifiers = identifiers;
+				}
+			}
+
+			response.failure = { resp ->
+
+				log.error("Failure when performing identify call: " + resp.statusLine);
+				throw new OAIException(resp.statusLine);
+			}
+		}
+
+		log.debug("Identify completed with parsed data: " + result);
+
+		return result;
+	}
+
+	def listMetadataFormats(oai_endpoint) throws OAIException {
+		
+		log.debug("OAIConnector::listMetadataFormats called with oai_endpoint: ${oai_endpoint}");
+
+		def result = [] // Set up the list for return data
+
+		// Perform the ListMetadataFormats request
+		oai_endpoint.request(GET) {request ->
+
+			uri.query = [ 'verb':'ListMetadataFormats']
+
+			request.getParams().setParameter("http.socket.timeout", new Integer(5000))
+			headers.Accept = 'application/xml'
+
+			response.success = { resp, xml ->
+				// log.debug( "Server Response: ${resp.statusLine}" )
+				// log.debug( "Server Type: ${resp.getFirstHeader('Server')}" )
+				// log.debug( "content type: ${resp.headers.'Content-Type'}" )
+
+				xml?.ListMetadataFormats?.metadataFormat?.each { mFormat ->
+					log.debug("ListMetadataFormats individual metadata format response:  ${mFormat.toString()}");
+
+					def thisFormat = [:];
+					thisFormat.metadataPrefix = mFormat.metadataPrefix?.toString();
+					thisFormat.schema = mFormat.schema?.toString();
+					thisFormat.metadataNamespace = mFormat.metadataNamespace?.toString();
+
+					result.add(thisFormat);
+				}
+			}
+
+			response.failure = { resp ->
+
+				log.error("Failure when performing list metadata formats call: " + resp.statusLine);
+				throw new OAIException(resp.statusLine);
+			}
+		}
+
+		log.debug("ListMetadataFormats completed with parsed data size: " + result.size());
+
+		return result;
+	}
+
+	def listSets() {
+		
+		log.debug("OAIConnector::listSets called with oai_endpoint: ${oai_endpoint}");
+
+		def result = [] // Set up the list for return data
+
+		// Perform the ListSets request
+		oai_endpoint.request(GET) {request ->
+
+			uri.query = [ 'verb':'ListSets']
+
+			request.getParams().setParameter("http.socket.timeout", new Integer(5000))
+			headers.Accept = 'application/xml'
+
+			response.success = { resp, xml ->
+				// log.debug( "Server Response: ${resp.statusLine}" )
+				// log.debug( "Server Type: ${resp.getFirstHeader('Server')}" )
+				// log.debug( "content type: ${resp.headers.'Content-Type'}" )
+
+				xml?.ListSets?.set?.each { aSet ->
+					log.debug("ListSets individual set response:  ${aSet.toString()}");
+
+					def thisSet = [:];
+					thisSet.setSpec = aSet.setSpec?.toString();
+					thisSet.setName = aSet.setName?.toString();
+					thisSet.description = aSet.setDescription?.toString();
+
+					result.add(thisSet);
+				}
+			}
+
+			response.failure = { resp ->
+
+				log.error("Failure when performing list sets call: " + resp.statusLine);
+				throw new OAIException(resp.statusLine);
+			}
+		}
+
+		log.debug("ListSets completed with parsed data size: " + result.size());
+
+		return result;
+	}
+
+	def listRecords(oai_endpoint, metadataPrefix, from, until, setSpec) {
+		// TODO
+	}
+
+	def listIdentifiers() {
+		// TODO
+	}
+
+	def getRecord() {
+		throw new UnsupportedOperationException("Not yet implemented");
+	}
+
+	def uploadStream(document_bytes,target_service, data_provider) {
+
+		log.debug("About to make post request");
+
+		try {
+			byte[] resource_to_deposit = document_bytes
+
+			log.debug("Length of input stream is ${resource_to_deposit.length}");
+
+			target_service.request(POST) {request ->
+				requestContentType = 'multipart/form-data'
+
+				// Much help taken from http://evgenyg.wordpress.com/2010/05/01/uploading-files-multipart-post-apache/
+				def multipart_entity = new MultipartEntity(HttpMultipartMode.BROWSER_COMPATIBLE);
+				multipart_entity.addPart( "owner", new StringBody( data_provider, "text/plain", Charset.forName( "UTF-8" )))  // Owner
+
+				def uploaded_file_body_part = new org.apache.http.entity.mime.content.ByteArrayBody(resource_to_deposit, 'text/xml', 'filename')
+				multipart_entity.addPart( "upload", uploaded_file_body_part)
+
+				request.entity = multipart_entity;
+
+				response.success = { resp, data ->
+					println("response status: ${resp.statusLine}")
+					println("Response data code: ${data?.code}");
+					println("Response message: ${data?.message}");
+				}
+
+				response.failure = { resp ->
+					println("Failure attempting to deposit record - ${resp.statusLine} - data: ${resp.data}");
+				}
+			}
+		}
+		catch ( Exception e ) {
+			log.error("Unexpected exception trying to read remote stream",e)
+		}
+		finally {
+			log.debug("uploadStream try block completed");
+		}
+		log.debug("uploadStream completed");
+	}
 
 }
 

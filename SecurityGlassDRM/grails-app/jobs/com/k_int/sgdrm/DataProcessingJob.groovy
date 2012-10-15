@@ -1,6 +1,6 @@
 package com.k_int.sgdrm
 
-
+import org.elasticsearch.groovy.client.GIndicesAdminClient
 
 class DataProcessingJob {
 	static triggers = {
@@ -11,13 +11,10 @@ class DataProcessingJob {
 
 	// Set up the various services we are going to use for the processing
 	def repositoryMonitorService;
-	def stegHideStegService;
 	def tripleStoreService;
 	def elasticSearchWrapperService;
 	def mongoWrapperService;
-	def exivMetadataWrapperService;
-	def imageWatermarkService;
-	def imageResizeService;
+	def imageProcessingService;
 
 	def execute() {
 
@@ -30,169 +27,91 @@ class DataProcessingJob {
 		//log.debug("elasticSearchWrapperService = " + elasticSearchWrapperService);
 		//log.debug("mongWrapperService = " + mongoWrapperService);
 		//log.debug("exivMetadataWrapperService = " + exivMetadataWrapperService);
-		log.debug("imageWatermarkService = " + imageWatermarkService);
-		log.debug("imageResizeService = " + imageResizeService);
+		//log.debug("imageWatermarkService = " + imageWatermarkService);
+		//log.debug("imageResizeService = " + imageResizeService);
 
-		def starttime = System.currentTimeMillis();
-		println("MEDIA Data processing.. Initialising at ${starttime}");
+		log.debug("SecurityGlass Data processing.. Initialising at ${new Date()}");
 
 		def reccount = 0;
+		def starttime = System.currentTimeMillis();
 
 		// Set up the elastic search client..
-		def esclient = init(); // TODO - make this bit work!
+		def esclient = setupES();
 
-		println("Connect to mongo");
-		def mongo = mongoWrapperService.mongo;
-		def db = mongo.getDB("frbr")
+		// Set up the connection to mongo
+		def db = mongoWrapperService.getDatabase("frbr"); // TODO - change this to come from config..
 
+		// Work out where to put the images that are created and make the
+		// directory if it doesn't exist already
+		// TODO - change this to come from config
 		def image_repo_dir = "${System.getProperty('user.home')}/media/images"
-		println("WOrking with image repo dir ${image_repo_dir}");
-
+		log.debug("Working with image repo dir ${image_repo_dir}");
 		File image_repo_dir_file = new File(image_repo_dir);
 		image_repo_dir_file.mkdirs();
 
-		println("Monitor starting after ${System.currentTimeMillis() - starttime}");
+		// Iterate through all of the new records in the database and process them
+		try {
+			repositoryMonitorService.iterateLatest(db,'work', -1) { jsonobj ->
 
-		repositoryMonitorService.iterateLatest(db,'work', -1) { jsonobj ->
+				log.debug("Process [${reccount++}] ${jsonobj._id}");
+				def remote_image_url = jsonobj.expressions[0].manifestations[0].uri
+				log.debug("Fetch image from : ${remote_image_url}");
 
-			println("Process [${reccount++}] ${jsonobj._id}");
-			def remote_image_url = jsonobj.expressions[0].manifestations[0].uri
-			println("Fetch image from : ${remote_image_url}");
+				log.debug("Checking for any existing items where workId matches");
+				def item_record = null;
+				item_record = db.item.findOne(workId:jsonobj._id, workflowType:'original');
+				if ( item_record == null ) {
+					log.debug("Create new item record");
+					item_record = [:]
+					item_record._id = new org.bson.types.ObjectId();
+				}
 
+				def output_filename = "${image_repo_dir}/${item_record._id.toString()}"
 
-			println("***owner = ${jsonobj.owner}");
+				// Populate the item record with the relevant data
+				item_record.originalSource = [type:'external',uri:remote_image_url]
+				item_record.workId = jsonobj._id;
+				item_record.workflowType = 'original'
+				item_record.mimeType = 'application/jpg'
+				item_record.pathInStore = output_filename
+				item_record.createDate = System.currentTimeMillis();
 
-			// def writer = new StringWriter()
-			// def xml = new groovy.xml.MarkupBuilder(writer)
-			// xml.setOmitEmptyAttributes(true);
-			// xml.setOmitNullAttributes(true);
-			// xml.'xcri:provider'('rdf:about':"urn:xcri:provider:${jsonobj._id}",
-			//                     'xmlns:rdf':'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
-			//                     'xmlns:dcterms':'http://purl.org/dc/terms/',
-			//                     'xmlns:dc':'http://purl.org/dc/elements/1.1/',
-			//                     'xmlns:xcri':'http://xcri.org/profiles/catalog/1.2/') {
-			//   'dc:title'(jsonobj.label)
-			// }
+				// Copy the remote image file into the local file
+				log.debug("Downloading remote image");
+				def out_file = new FileOutputStream(output_filename)
+				def out_stream = new BufferedOutputStream(out_file)
+				out_stream << new URL(jsonobj.expressions[0].manifestations[0].uri).openStream()
+				out_stream.close()
+				db.item.save(item_record);
 
+				// Set up the Elastic search entry
+				log.debug("Setting up ES entry");
+				def esent = [:]
+				esent._id = jsonobj._id;
+				esent.title = jsonobj.title;
+				esent.description = jsonobj.description;
+				esent.identifier = jsonobj.identifier;
+				esent.lastModified = jsonobj.lastModified;
+				esent.owner = jsonobj.owner;
+				indexESEntry(esclient, esent);
 
-			println("Checking for any existing items where workId matches");
-			def item_record = null;
-			item_record = db.item.findOne(workId:jsonobj._id, workflowType:'original');
-			if ( item_record == null ) {
-				println("Create new item record");
-				item_record = [:]
-				item_record._id = new org.bson.types.ObjectId();
+				log.debug("Creating copies of original image");
+				log.debug("Creating public secure copy");
+				imageProcessingService.createSecureCopy(db,image_repo_dir, jsonobj, item_record, 'SecureCopy', 'MediaProjectOwner', 'MEDIA');
+				log.debug("Creating thumbnail");
+				imageProcessingService.createSecureCopy(db,image_repo_dir, jsonobj, item_record, 'Thumbnail', 'MediaProjectOwner','MEDIA','140x140>');
+
+				log.debug("Item has id ${item_record._id} and saved in ${output_filename}");
 			}
-			else {
-				println("update existing item record");
-			}
-
-			println("***2owner = ${jsonobj.owner}");
-
-			def output_filename = "${image_repo_dir}/${item_record._id.toString()}"
-
-			item_record.originalSource = [type:'external',uri:remote_image_url]
-			item_record.workId = jsonobj._id;
-			item_record.workflowType = 'original'
-			item_record.mimeType = 'application/jpg'
-			item_record.pathInStore = output_filename
-			item_record.createDate = System.currentTimeMillis();
-
-			// Read the remote image file into the local file
-			def out_file = new FileOutputStream(output_filename)
-			def out_stream = new BufferedOutputStream(out_file)
-			out_stream << new URL(jsonobj.expressions[0].manifestations[0].uri).openStream()
-			out_stream.close()
-			db.item.save(item_record);
-
-			println("***3owner = ${jsonobj.owner}");
-			def esent = [:]
-			esent._id = jsonobj._id;
-			esent.title = jsonobj.title;
-			esent.description = jsonobj.description;
-			esent.identifier = jsonobj.identifier;
-			esent.lastModified = jsonobj.lastModified;
-			esent.owner = jsonobj.owner;
-			createESEntry(esclient, esent);
-
-			println("***4owner = ${jsonobj.owner}");
-			println("****esent.owner = ${esent.owner}");
-			println("Create public secure copy");
-			createSecureCopy(db,image_repo_dir, jsonobj, item_record, 'SecureCopy', 'MediaProjectOwner');
-
-			println("Create thumbnail");
-			createSecureCopy(db,image_repo_dir, jsonobj, item_record, 'Thumbnail', 'MediaProjectOwner','140x140>');
-
-			println("New item has id ${item_record._id} and saved in ${output_filename}");
-
-			println("*complete*");
-
-			// def result = writer.toString();
-			// tse.removeGraph("urn:xcri:course:${jsonobj._id}");
-			// tse.update(result, "urn:xcri:course:${jsonobj._id}", 'application/rdf');
-			// println("Updated provider ( ${System.currentTimeMillis() - starttime} )");
+		} catch ( RepositoryMonitorException rme ) {
+			log.error("RespositoryMonitorException thrown when attempting to iterate through new records: " + rme.getMessage());
 		}
 
-		println("Completed after ${reccount} records in ${System.currentTimeMillis() - starttime}ms");
-
-
-		//TODO
+		log.debug("Completed after ${reccount} records in ${System.currentTimeMillis() - starttime}ms");
 	}
 
 
-	/**
-	 *  Create a copy of the original item.
-	 *  Steg hide the ID of the new item in the image itself
-	 *  Add the id of the image to the exif and the XMP metadata
-	 *  Create the new item
-	 */
-	def createSecureCopy(db,image_repo_dir, work, original_item, workflowType, owner, resize=null) {
-
-		def new_item_id = new org.bson.types.ObjectId();
-		def new_file_name = "${image_repo_dir}/${new_item_id}"
-
-		def new_item = [:]
-		new_item._id = new_item_id
-		new_item.workId = work._id;
-		new_item.workflowType = workflowType
-		new_item.createDate = System.currentTimeMillis();
-		new_item.pathInStore = new_file_name
-
-		println("Create secure copy from original... New item id is ${new_item_id}, store location will be ${new_file_name}");
-
-		// Copy....
-		def copy_cmd = "cp ${original_item.pathInStore} ${new_file_name}"
-		println("copy: ${copy_cmd}");
-		def process = copy_cmd.execute()
-
-		// Augment metadata
-
-		// Resize
-		if ( resize ) {
-			println("Resize...");
-			imageResizeService.resize(new_file_name, resize);
-		}
-
-
-		// Watermark
-		println("watermark...");
-		imageWatermarkService.watermark(new_file_name, 'MEDIA');
-
-		// steg hide item identifier
-		stegHideStegService.hide(new_item_id,  new_file_name);
-
-		// Embed metadata
-		embedXMP(new_item_id,owner,new_file_name);
-
-		// save
-		db.item.save(new_item);
-	}
-
-	def embedXMP(identifier,owner,target) {
-		exivMetadataWrapperService.embed(identifier,owner,target);
-	}
-
-	def createESEntry(esclient, entry) {
+	def indexESEntry(esclient, entry) {
 
 		entry.indexTime = new Date();
 
@@ -203,9 +122,6 @@ class DataProcessingJob {
 				id entry._id
 				source entry
 			}
-
-			println("==============After indexing future = " + future)
-			println("future.response: " + future.getResponse());
 		}
 		catch ( Exception e ) {
 			e.printStackTrace();
@@ -214,55 +130,29 @@ class DataProcessingJob {
 		}
 
 	}
-	
-	def init() {
-		
-		org.elasticsearch.groovy.common.xcontent.GXContentBuilder.rootResolveStrategy = Closure.DELEGATE_FIRST
-		
-		  org.elasticsearch.groovy.node.GNode esnode = elasticSearchWrapperService.getNode()
-		  org.elasticsearch.groovy.client.GClient esclient = esnode.getClient()
-		
-		  // Get hold of an index admin client
-		  org.elasticsearch.groovy.client.GIndicesAdminClient index_admin_client = new org.elasticsearch.groovy.client.GIndicesAdminClient(esclient);
-		
-		
+
+	def setupES() {
+
+		// TODO - change the following to come from config...
+
+		def index_admin_client = new GIndicesAdminClient(elasticSearchWrapperService.getESClient());
 		def future = index_admin_client.putMapping {
-			  indices 'media'
-			  type 'work'
-			  source {
+			indices 'media'
+			type 'work'
+			source {
 				media {       // Think this is the name of the mapping within the type
-				  properties {
-					owner {
-					  type = 'string'
-					  store = 'yes'
-					  index = 'not_analyzed'
+					properties {
+						owner {
+							type = 'string'
+							store = 'yes'
+							index = 'not_analyzed'
+						}
 					}
-				  }
 				}
-			  }
 			}
-			println("Installed course mapping ${future}");
-		
-		  //// Check to see if the index already exists and create it if not
-		  //try {
-			 //index_admin_client.status(new org.elasticsearch.action.admin.indices.status.IndicesStatusRequest('media'));
-			//System.err.println("No exception thrown, so index must exist....");
-			//    getClient().admin().indices().status(indicesStatusRequest(index)).actionGet();
-			//} catch(e) {
-				//// Index does not exist yet.
-		//System.err.println("Index doesn't exist so want to create it...");
-				//getClient().admin().indices().create(createIndexRequest(index)).actionGet();
-				//establishedIndicies.push(index);
-			//}
-		
-		
-		  // Create an index if none exists
-		  //def future = index_admin_client.create {
-			//index 'media'
-		  //}
-		
-			//println("future.response: " + future.getResponse());
-		
-		  esclient
 		}
+		println("Installed media mapping ${future}");
+
+		elasticSearchWrapperService.getESClient();
+	}
 }
