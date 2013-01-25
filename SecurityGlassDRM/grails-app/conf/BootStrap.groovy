@@ -29,7 +29,8 @@ class BootStrap {
                       username: 'admin',
                       password: 'admin',
                       email: 'admin@localhost',
-                      enabled: true).save(failOnError: true)
+                      enabled: true,
+                      encKey: '398dc3cf43f775d469982ca906e4481d7a353fbac30c497510942ddd70767cbe').save(failOnError: true)
     }
 
     if (!adminUser.authorities.contains(adminRole)) {
@@ -57,6 +58,16 @@ class BootStrap {
 	def running_status = ConnectorStatus.findByName("Running") ?: new ConnectorStatus(name: "Running").save();
 	def disabled_status = ConnectorStatus.findByName("Disabled") ?: new ConnectorStatus(name: "Disabled").save();
 	def completed_status = ConnectorStatus.findByName("Completed") ?: new ConnectorStatus(name: "Completed").save();
+	
+	// Create the different job statuses
+	def oai_connector_status = JobStatus.findByName("OAISchedulingJob") ?: new JobStatus(name: "OAISchedulingJob", description: "OAI client scheduling task", active: false, lastRunTime: null).save();
+	def data_processing_status = JobStatus.findByName("DataProcessingJob") ?: new JobStatus(name: "DataProcessingJob", description: "Imported data processing task", active: false, lastRunTime: null).save();
+	
+	
+	// Create some temp 'created media' objects
+	def createdMedia1 = CreatedMedia.findByName("rich") ?: new CreatedMedia(recordId:"12345", name:"rich", email:"rich@k-int.com", encryptionKey:"123412312", creationDate: new Date()).save();
+	def createdMedia2 = CreatedMedia.findByName("steph") ?: new CreatedMedia(recordId:"12345a", name:"steph", email:"rich1@k-int.com", encryptionKey:"12341231a2", creationDate: new Date()).save();
+	def createdMedia3 = CreatedMedia.findByName("isobel") ?: new CreatedMedia(recordId:"12345b", name:"isobel", email:"rich2@k-int.com", encryptionKey:"1234123a12", creationDate: new Date()).save();
 	
 	
 	// Register JSON marshaller for the RepositoryConnector

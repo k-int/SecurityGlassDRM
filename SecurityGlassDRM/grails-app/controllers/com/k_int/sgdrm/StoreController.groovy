@@ -42,13 +42,21 @@ class StoreController {
 				}
 
 				def uploadPermissions = false;
+				def currentUsername = "";
+				def currentEmail = "";
+				def currentKey = "";
 				
 				if ( principal != null ) {
 					if ( principal.id == actualStore.storeContext.owner.id ) 
-						uploadPermissions = true;		
+						uploadPermissions = true;	
+						
+					// Remember the username, etc. of the user for use by the caller
+					currentUsername = principal.username;
+					currentEmail = principal.email;
+					currentKey = principal.encKey;
 				}
 				
-		        return [specifiedContext: specifiedContext, specifiedStore: specifiedStore, uploadPermissions: uploadPermissions];
+		        return [specifiedContext: specifiedContext, specifiedStore: specifiedStore, uploadPermissions: uploadPermissions, username: currentUsername, email: currentEmail, encKey: currentKey];
 			}
 		}
 		

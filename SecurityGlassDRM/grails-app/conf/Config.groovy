@@ -103,7 +103,6 @@ log4j = {
 
     debug  'grails.app.config',
            'grails.app.controllers',
-           'grails.app.service',
            'grails.app.services',
            'grails.app.domain',
            'grails.app.jobs'

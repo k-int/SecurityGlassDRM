@@ -48,11 +48,14 @@
             <ul class="nav pull-right">              
               <sec:ifLoggedIn>
                 <li><g:link controller="logout">Logout</g:link></li>
+                <sec:ifAllGranted roles="ROLE_ADMIN">
+                <li><g:link controller="systemAdmin">Administration</g:link></li>
+                </sec:ifAllGranted>
               </sec:ifLoggedIn>
               <sec:ifNotLoggedIn>
                 <li><g:link controller="register">Register</g:link></li>
                 <li><a>Features</a></li>
-                <li><g:link controller="login">Sign-In</g:link></li>
+                <li><g:link controller="login">Login</g:link></li>
               </sec:ifNotLoggedIn>
             </ul>
           </div>

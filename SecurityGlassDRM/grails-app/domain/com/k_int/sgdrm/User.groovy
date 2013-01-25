@@ -6,6 +6,8 @@ class User {
 
   String username
   String password
+  String email
+  String encKey
   boolean enabled
   boolean accountExpired
   boolean accountLocked
@@ -16,6 +18,8 @@ class User {
     username blank: false, unique: true
     password blank: false
     plan blank:false, nullable:true
+	email blank: false
+	encKey blank: false
   }
 
   static mapping = {

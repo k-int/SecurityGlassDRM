@@ -32,10 +32,11 @@ class ImageProcessingService {
 	 *  @param owner The owner of the image
 	 *  @param resize Resize information
 	 */
-	def createSecureCopy(db,image_repo_dir, work, original_item, workflowType, owner, watermark, resize=null) {
+	def createSecureCopy(db,image_repo_path, repo_dir, work, original_item, workflowType, owner, license, watermark, resize=null) {
 
 		def new_item_id = new org.bson.types.ObjectId();
-		def new_file_name = "${image_repo_dir}/${new_item_id}"
+		def new_relative_file_name = "/${repo_dir}/${new_item_id}"
+		def new_file_name = "${image_repo_path}${new_relative_file_name}"
 
 		def new_item = [:]
 		new_item._id = new_item_id
@@ -43,6 +44,9 @@ class ImageProcessingService {
 		new_item.workflowType = workflowType
 		new_item.createDate = System.currentTimeMillis();
 		new_item.pathInStore = new_file_name
+		new_item.relative_pathInStore = new_relative_file_name
+		new_item.xmpFile = new_file_name + ".xmp";
+		new_item.relative_xmpFile = new_item.relative_pathInStore + ".xmp";
 
 		log.debug("Creating secure copy from original... New item id is ${new_item_id}, store location will be ${new_file_name}");
 
@@ -60,7 +64,7 @@ class ImageProcessingService {
 
 		// Watermark
 		log.debug("Watermarking image...");
-		imageWatermarkService.watermark(new_file_name, watermark); // TODO - get the watermark from configuration
+		imageWatermarkService.watermark(new_file_name, watermark);
 
 		// steg hide item identifier
 		log.debug("Encoding image ID in the image itself");
@@ -68,10 +72,12 @@ class ImageProcessingService {
 
 		// Embed metadata
 		log.debug("Embedding XMP metadata");
-		embedXMP(new_item_id,owner,new_file_name);
+		embedXMP(new_item_id,owner, license, new_file_name);
 
 		// save the information about this new manifestation into the database
 		db.item.save(new_item);
+		
+		return new_item;
 	}
 
 	/**
@@ -81,8 +87,8 @@ class ImageProcessingService {
 	 * @param target The target file
 	 * @return
 	 */
-	def embedXMP(identifier,owner,target) {
-		exivMetadataWrapperService.embed(identifier,owner,target);
+	def embedXMP(identifier,owner, license, target) {
+		exivMetadataWrapperService.embed(identifier,owner, license,target);
 	}
 
 

@@ -9,6 +9,18 @@
   </head>
 
   <body>
+  
+    <sec:ifLoggedIn>
+        <script type="text/javascript">
+        var isLoggedIn = true;
+        </script>
+    </sec:ifLoggedIn>
+    <sec:ifNotLoggedIn>
+        <script type="text/javascript">
+        var isLoggedIn = false;
+        </script>
+    </sec:ifNotLoggedIn>
+    
     <div class="row-fluid">
       <section id="main" class="span12">
 
@@ -35,6 +47,8 @@
           <div id="resourcesDiv" class="row-fluid">
             <p class="unimportant">Loading..</p>
           </div>
+          <a href="#xmpMetadataModal" role="button" id="hiddenShowXMPLink" name="hiddenShowXMPLink" class="btn" data-toggle="modal" style="display:none">Hidden XMP metadata link</a>
+          
           
         </div>
           
@@ -62,7 +76,6 @@
         </div>
           
       </section>
-
       
       <div class="modal hide fade" id="uploadModal" name="uploadModal" tabIndex="-1"  role="dialog" aria-labelledby="modalUploadLabel" aria-hidden="true">
         <div class="modal-header">
@@ -159,6 +172,31 @@
               <button type="button" class="btn btn-danger" data-dismiss="modal" aria-hidden="true">Cancel</button>
           </div>
         </div>
+      </div>
+
+      <div class="modal hide fade" id="xmpMetadataModal" name="xmpMetadataModal" tabIndex="-1"  role="dialog" aria-labelledby="xmpMedataModalLabel" aria-hidden="true">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+          <h3>XMP Metadata</h3>
+        </div>
+        <div class="modal-body">
+            <div id="metadataDisplayDiv" name="metadataDisplayDiv">Loading..</div>
+        </div>
+        <div class="modal-footer">
+          <div class="btn-group pull-right">
+              <button type="button" class="btn btn-danger" data-dismiss="modal" aria-hidden="true">Close</button>
+          </div>
+        </div>
+      </div>
+      
+      <div class="hide" id="purchaseImageFormDiv" name="purchaseImageFormDiv">
+        <!--  Hidden form used for the submission of an image purchase request -->
+        <g:form name="purchaseImageForm" controller="create" action="save" method="POST">
+            <input type="text" id="userName" name="userName" value="${username}"/>
+            <input type="text" id="encryptionKey" name="encryptionKey" value="${encKey}"/>
+            <input type="text" id="email" name="email" value="${email}"/>
+            <input type="text" id="recordId" name="recordId" value="IMAGE_ID"/>
+        </g:form>
       </div>
 
       <script type="text/javascript">
@@ -397,7 +435,7 @@
 
         function setupResources() {
 
-            $.getJSON("${grailsApplication.config.com.k_int.sgdrm.esSearchPath}?sort=indexTime:desc&size=5&q=owner:${specifiedContext}/${specifiedStore}", function() {
+            $.getJSON("${grailsApplication.config.com.k_int.sgdrm.esSearchPath}?sort=indexTime:desc&size=5&q=title:figurine AND owner:${specifiedContext}/${specifiedStore}", function() {
 
             })
             .success(function(json) { 
@@ -441,7 +479,7 @@
             	rowDiv.append(dataDiv);
 
             	// Add the image to the relevant section
-            	imageDiv.append("<img class='resourceThumbnail' src='" + this._source.identifier + "' alt='Resource thumbnail'/>");
+            	imageDiv.append("<img src='" + this._source.thumbnail_path + "' alt='Resource thumbnail'/>");
 
             	// Add the resource data
             	var dl = $("<dl></dl>");
@@ -450,6 +488,18 @@
             	
             	dataDiv.append(dl);
 
+                // Put in buttons to view XMP and buy the image
+                var buttonDiv = $("<div class='btn-group pull-right'></div>");
+                buttonDiv.append("<button onclick='javascript:showXMPMetadata(\""+this._source.xmp_path+"\")' class='btn btn-mini'>XMP metadata</button>");
+                
+                if ( isLoggedIn ) {
+                    buttonDiv.append("<a href='javascript:setupWatermarkedPurchase(\"" + this._source._id + "\")' class='btn btn-mini btn-primary'>Download large</a>");
+                    buttonDiv.append("<a href='javascript:setupImagePurchase(\"" + this._source._id + "\")' class='btn btn-mini btn-success'>Purchase</a>");
+                } else {
+                    buttonDiv.append("<a href='' class='btn btn-mini btn-primary disabled' title='Log in to purchase this image'>Purchase</a>");
+                }
+                
+                dataDiv.append(buttonDiv);
                 
                 resourcesContainer.append(rowDiv);
                 resourcesContainer.append("<hr class='reducedMargin'/>");
@@ -499,6 +549,74 @@
                 statisticsContainer.append(messageHolder);
             }
         }
+        
+        function showXMPMetadata(metadataPath) {            
+            $.get(metadataPath, function(metadata) {
+                
+            }, "text")
+            .success(function(metadata) { 
+                processXMPMetadata(metadata);
+            
+            })
+            .error(function(jqXHR, textStatus, errorThrown) {
+                alert("Error getting back relevant XMP metadata");
+                console.log("error " + textStatus);
+                console.log("incoming Text " + jqXHR.responseText);
+            })
+            .complete(function() {});
+        }
+        
+        function processXMPMetadata(metadata) {
+            
+            // Put the returned metadata into the relevant div and then show it
+            
+            // Grab the div and populate it
+            var metadataDiv = $('#metadataDisplayDiv');
+            
+            var metadataPre = $("<pre></pre>");
+            metadataPre.text(metadata);
+
+            metadataDiv.html("");            
+            metadataDiv.append(metadataPre);
+
+            // Show the div
+            // Simulate the click on the reveal button
+            $('#hiddenShowXMPLink').click();
+            
+        }
+        
+        function setupImagePurchase(imageId) {
+            // Set up the image purchase form with the image id (it'll already have the user's details)
+            // and the relevant action to generate the large un-watermarked image
+            // and then submit the purchase request to the server
+            
+            // Set the image ID
+            var imagePurchaseIdField = $("#recordId");
+            imagePurchaseIdField.val(imageId);
+            
+            // Submit the form and get back the image
+            var imagePurchaseForm = $("#purchaseImageForm");
+            imagePurchaseForm.attr("action",'<g:createLink controller="create" action="createLargeSecured"/>');
+            imagePurchaseForm.submit();
+            
+        }
+
+        function setupWatermarkedPurchase(imageId) {
+            // Set up the image purchase form with the image id (it'll already have the user's details)
+            // and the relevant action to generate a large watermarked image
+            // and then submit the purchase request to the server
+            
+            // Set the image ID
+            var imagePurchaseIdField = $("#recordId");
+            imagePurchaseIdField.val(imageId);
+            
+            // Submit the form and get back the image
+            var imagePurchaseForm = $("#purchaseImageForm");
+            imagePurchaseForm.attr("action",'<g:createLink controller="create" action="createLargeWatermarked"/>');
+            imagePurchaseForm.submit();
+            
+        }
+
       </script>
     </div>
   </body>

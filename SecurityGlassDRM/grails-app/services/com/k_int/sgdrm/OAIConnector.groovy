@@ -17,62 +17,105 @@ import groovyx.net.http.RESTClient
 import groovy.util.slurpersupport.GPathResult
 import groovy.xml.StreamingMarkupBuilder
 import java.nio.charset.Charset
+import org.codehaus.groovy.grails.web.context.ServletContextHolder;
+import org.codehaus.groovy.grails.web.servlet.GrailsApplicationAttributes;
+import org.springframework.context.ApplicationContext;
+
+import org.apache.http.conn.HttpHostConnectException
 
 
 class OAIConnector {
-
-	private static final log = LogFactory.getLog(this)
+	
+	
 
 	def sync(oai_connector_info) {
-		println("OAIConnector::sync(${oai_connector_info})");
-
+		log.debug("OAIConnector::sync(${oai_connector_info})");
+		
+		
+		
 		// Get a handle to the local mongo service
 		// def mongo = new com.gmongo.GMongo();
 		// def db = mongo.getDB("media_rcs")
 
-		def repo_baseurl = 'http://localhost:28080/repository/upload.json'
-		def repo_identity = 'admin'
-		def repo_credentials = 'password'
+		ApplicationContext context = (ApplicationContext)ServletContextHolder.getServletContext().getAttribute(GrailsApplicationAttributes.APPLICATION_CONTEXT);
+		log.debug("context = " + context);
+		def applicationConfig = context.getBean("grailsApplication");
+		def repo_baseurl = applicationConfig.config.com.k_int.sgdrm.repoUploadUrl.toString();
+		def repo_identity = applicationConfig.config.com.k_int.sgdrm.repoUploadUsername.toString();
+		def repo_credentials = applicationConfig.config.com.k_int.sgdrm.repoUploadPass.toString();
 		log.debug("Assemble repository client to ${repo_baseurl} - ${repo_identity}/${repo_credentials}");
 
 		def aggregator_service = new HTTPBuilder( repo_baseurl )
 		aggregator_service.auth.basic repo_identity, repo_credentials
-
-
-		// def oai_connector_info = db.agents.findOne(identifier: 'mcmg_gatherer_agent_info')
 
 		if ( oai_connector_info == null ) {
 			println("No connector info... abort");
 			return;
 		}
 
-		def props =[:]
-		props.reccount = 0;
-		props.maxts = "";
+		if ( !oai_connector_info.props )
+			oai_connector_info.props = [:];
+		oai_connector_info.props.reccount = 0;
+		oai_connector_info.props.maxts = "";
+		oai_connector_info.props.status = "";
+		oai_connector_info.props.message = "";
 
 		def oai_endpoint = new RESTClient( oai_connector_info.baseuri )
-
-		def rt = fetchOAIPage(oai_endpoint, aggregator_service, null, props, oai_connector_info.prefix, oai_connector_info.setname, oai_connector_info.owner)
-
-		def cont = checkAgainstMaxBatchSize(props.reccount, oai_connector_info.maxbatch);
-
-		while ( ( rt != null ) &&
-		( rt.length() > 0 ) &&
-		( cont ) ) {
+		def resumptionToken = null;
+		
+		while(true) {
+			
+			// Go and get a page of records from the server
+			def recordData = listRecords(oai_endpoint, oai_connector_info.prefix, null, null, oai_connector_info.setname, resumptionToken );
+			
+			log.debug("Got back recordData with size: " + recordData.size() + " and num of records: " + recordData.records.size());
+			
+			// Loop through each of the returned records and upload them into the repository
 			try {
-				Thread.sleep(5000);
-			} catch ( Exception e ) {
+				
+				recordData.records.each() { aRecord ->
+				
+					byte[] db = aRecord.metadata.getBytes('UTF-8')
+	
+					log.debug("About to make post request [${oai_connector_info.props.reccount} / ${oai_connector_info.props.maxts} / ${oai_connector_info.owner} / ${aRecord.identifier}]");
+					uploadStream(db, aggregator_service, oai_connector_info.owner)
+
+					
+					oai_connector_info.props.reccount++;
+					oai_connector_info.props.maxts = aRecord.datestamp.toString();
+	
+					try {
+						Thread.sleep(500);
+					}
+						catch ( Exception e ) {
+					}						
+				}
+				resumptionToken = recordData.resumptionToken;
+	
+				def cont = checkAgainstMaxBatchSize(oai_connector_info.props.reccount, oai_connector_info.maxbatch)
+							
+				// If we don't have a resumption token then stop trying to get records, otherwise wait for a few 
+				// seconds and then continue with the next page
+				if ( resumptionToken == null || !cont ) 
+					break;
+				else
+					sleep(5000);
+			} catch (HttpHostConnectException hhce) {
+				// Failed to upload due to a connection issue - no point trying any more..
+				log.debug("Not going to continue trying to upload records as a connection exception was thrown when attempting: " + hhce.getMessage());
+				oai_connector_info.props.status = "error";
+				oai_connector_info.props.message = "Unable to connect to the repository: " + hhce.getMessage();
+				break;
+			} catch (ConnectorException ce) {
+				// Some other connector exception that is non-recoverable - give up trying..
+				log.debug("Not going to continue trying to upload as a connector exception has been thrown: " + ce.getMessage());
+				oai_connector_info.props.status = "error";
+				oai_connector_info.props.message = ce.getMessage();
+				break;
 			}
 
-			log.debug("Iterating using resumption token");
-			rt = fetchOAIPage(oai_endpoint, aggregator_service, rt, props, oai_connector_info.prefix, oai_connector_info.setname, oai_connector_info.owner);
-
-			cont = checkAgainstMaxBatchSize(props.reccount, oai_connector_info.maxbatch);
-
 		}
-
-		// Remember the number of records processed for storing later
-		oai_connector_info.records_processed = props.reccount;
+				
 	}
 
 	def checkAgainstMaxBatchSize(reccount, maxbatch) {
@@ -80,81 +123,12 @@ class OAIConnector {
 
 		if (maxbatch != null && maxbatch > 0 ) {
 			println("Checking record counter (${reccount} < ${maxbatch}");
-			if ( reccount > maxbatch ) {
+			if ( reccount >= maxbatch ) {
 				retval = false;
 			}
 		}
 
 		return retval;
-	}
-
-	def fetchOAIPage(oai_endpoint,
-	aggregator_service,
-	resumption_token,
-	props,
-	prefix,
-	setname,
-	data_provider) {
-		println("fetchOAIPage ${resumption_token}, ${prefix}, ${setname}");
-
-		def result = null;
-
-		oai_endpoint.request(GET) {request ->
-
-			// uri.path = '/ajax/services/search/web'
-			if ( resumption_token != null ) {
-				log.debug("Processing with resumption token...");
-				uri.query = [ 'verb':'ListRecords',
-							'resumptionToken':resumption_token,
-						]  // from, until,...
-			}
-			else {
-				log.debug("Initial harvest - no resumption token");
-				uri.query = [ 'verb':'ListRecords',
-							'metadataPrefix':prefix,
-							'set': setname ]  // from, until,...
-			}
-
-			request.getParams().setParameter("http.socket.timeout", new Integer(5000))
-			headers.Accept = 'application/xml'
-			// headers.'User-Agent' = 'GroovyHTTPBuilderTest/1.0'
-			// headers.'Referer' = 'http://blog.techstacks.com/'
-			response.success = { resp, xml ->
-				// log.debug( "Server Response: ${resp.statusLine}" )
-				// log.debug( "Server Type: ${resp.getFirstHeader('Server')}" )
-				// log.debug( "content type: ${resp.headers.'Content-Type'}" )
-
-				xml?.ListRecords?.record.each { rec ->
-					// log.debug("Record under xml ${rec.toString()}");
-					def builder = new StreamingMarkupBuilder()
-					// log.debug("record: ${builder.bindNode(rec.metadata.description).toString()}")
-					def new_record = builder.bindNode(rec.metadata.children()[0]).toString()
-					log.debug("submit record[${props.reccount++}]")
-
-					props.maxts = rec.header.datestamp;
-					byte[] db = new_record.getBytes('UTF-8')
-
-					println("About to make post request [${props.reccount} / ${props.maxts} / ${data_provider}]");
-					uploadStream(db, aggregator_service, data_provider)
-
-					try {
-						Thread.sleep(500);
-					}
-					catch ( Exception e ) {
-					}
-				}
-
-				result = xml?.ListRecords?.resumptionToken?.toString()
-			}
-
-			response.failure = { resp ->
-				log.debug( resp.statusLine )
-			}
-		}
-
-		log.debug("fetch page returning ${result}.");
-
-		result
 	}
 
 	def identify(oai_endpoint) throws OAIException {
@@ -210,7 +184,7 @@ class OAIConnector {
 	}
 
 	def listMetadataFormats(oai_endpoint) throws OAIException {
-		
+
 		log.debug("OAIConnector::listMetadataFormats called with oai_endpoint: ${oai_endpoint}");
 
 		def result = [] // Set up the list for return data
@@ -253,7 +227,7 @@ class OAIConnector {
 	}
 
 	def listSets() {
-		
+
 		log.debug("OAIConnector::listSets called with oai_endpoint: ${oai_endpoint}");
 
 		def result = [] // Set up the list for return data
@@ -295,19 +269,99 @@ class OAIConnector {
 		return result;
 	}
 
-	def listRecords(oai_endpoint, metadataPrefix, from, until, setSpec) {
-		// TODO
+	def listRecords(oai_endpoint, metadataPrefix, from, until, setSpec, resumptionToken) {
+
+		log.debug("OAIConnector::listRecords called with oai_endpoint: ${oai_endpoint}, metadataPrefix: ${metadataPrefix}, from: ${from}, until: ${until}, set: ${setSpec}, resumptionToken: ${resumptionToken}");
+
+		def result = [:] // Set up the map for return data
+
+		// Perform the ListRecords request
+		oai_endpoint.request(GET) {request ->
+
+			def requestParams = ["verb":"ListRecords"];
+			
+			if ( resumptionToken ) {
+				// We have a resumption token
+				requestParams.resumptionToken = resumptionToken; 
+			} else {
+				// Check that we have the required arguments..
+				def allRequiredPresent = true;
+				def messages = [];
+				
+				if ( !metadataPrefix ) {
+					// No metadata prefix - can't continue
+					allRequiredPresent = false;
+					messages.add("Metadata prefix required but not specified");
+					// TODO - how best to handle this..
+				} else {
+					requestParams.metadataPrefix = metadataPrefix;
+				}
+				
+				if ( from ) {
+					requestParams.from = from;
+				}
+				
+				if ( until ) {
+					requestParams.until = until;
+				}
+				
+				if ( setSpec ) {
+					requestParams.set = setSpec;
+				}				
+			}
+			uri.query = requestParams;
+
+			request.getParams().setParameter("http.socket.timeout", new Integer(5000))
+			headers.Accept = 'application/xml'
+
+			response.success = { resp, xml ->
+				// log.debug( "Server Response: ${resp.statusLine}" )
+				// log.debug( "Server Type: ${resp.getFirstHeader('Server')}" )
+				// log.debug( "content type: ${resp.headers.'Content-Type'}" )
+
+				def records = [];
+				
+				xml?.ListRecords?.record?.each() { aRecord ->
+					
+					def thisRecord = [:];
+					thisRecord.identifier = aRecord.header?.identifier;
+					thisRecord.datestamp = aRecord.header?.datestamp;
+					thisRecord.setSpec = aRecord.header?.setSpec;
+					
+					// Get the actual record as XML again
+					def builder = new StreamingMarkupBuilder()
+					def new_record = builder.bindNode(aRecord.metadata.children()[0]).toString()
+					
+					thisRecord.metadata = new_record;
+					
+					records.add(thisRecord);
+				}
+				
+				result.records = records;
+				result.resumptionToken = xml.ListRecords?.resumptionToken?.toString();
+			}
+
+			response.failure = { resp ->
+
+				log.error("Failure when performing list records call: " + resp.statusLine);
+				throw new OAIException(resp.statusLine);
+			}
+		}
+
+		log.debug("ListRecords completed with parsed data size: " + result.size());
+
+		return result;
 	}
 
 	def listIdentifiers() {
-		// TODO
+		throw new UnsupportedOperationException("Not yet implemented");
 	}
 
 	def getRecord() {
 		throw new UnsupportedOperationException("Not yet implemented");
 	}
 
-	def uploadStream(document_bytes,target_service, data_provider) {
+	def uploadStream(document_bytes,target_service, data_provider) throws HttpHostConnectException, ConnectorException {
 
 		log.debug("About to make post request");
 
@@ -335,9 +389,21 @@ class OAIConnector {
 				}
 
 				response.failure = { resp ->
-					println("Failure attempting to deposit record - ${resp.statusLine} - data: ${resp.data}");
+					log.debug("Failure attempting to deposit record - ${resp.statusLine} - data: ${resp.data}");
+					throw(new ConnectorException("Failure depositing record: - ${resp.statusLine} - data: ${resp.data}"));
 				}
 			}
+		}
+		catch ( HttpHostConnectException hhce ) {
+			// Unable to connect to the aggregator - need to not continue trying and so kick the error back on up
+			// the call tree
+			log.error("Connection exception thrown when trying to upload to the repository:"  + hhce.getMessage());
+			throw hhce;
+		}
+		catch (ConnectorException ce) {
+			// Some other error when connecting to the aggregator
+			log.error("ConnectorException thrown when attempting to deposit: " + ce.getMessage());
+			throw ce;
 		}
 		catch ( Exception e ) {
 			log.error("Unexpected exception trying to read remote stream",e)
