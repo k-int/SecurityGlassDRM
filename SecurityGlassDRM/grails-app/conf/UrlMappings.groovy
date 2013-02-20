@@ -19,6 +19,7 @@ class UrlMappings {
                 "/$context/$store/$action"(controller:"store")
 				"/"(controller:"home",action:"index")
                 "/home/$action"(controller:"home")
+                "/dataRetreval/$action"(controller:"dataRetreval")
         
 		"500"(view:'/error')
 		"404"(view:'/notFound')
